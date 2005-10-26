@@ -1,0 +1,10 @@
+o Allow a list of tests as arguments to Test::Unit::GTestRunner::start() 
+  resp. gtestrunner. 
+
+o Emulate missing method of Test::Unit::TestSuite that runs alls scripts
+  in a test directory.
+
+o Instead of the error indicator, change progress bar color from green
+  to read.
+
+o Logo!

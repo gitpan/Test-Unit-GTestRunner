@@ -1,0 +1,33 @@
+bin/gtestrunner			Wrapper script
+ChangeLog			ChangeLog
+COPYING				Licensing
+gtestrunner.glade		Glade UI file
+gtestrunner.gladep		Glade options
+GTestRunner.pm.in		Source source
+lib/LocaleData/de/LC_MESSAGES/Test-Unit-GTestRunner.mo	Binary German translation
+lib/Test/Unit/GTestRunner.pm	Main module
+lib/Test/Unit/GTestRunner/Worker.pm  Worker module for Test::Unit::GTestRunner
+Makefile.PL                     Makefile generator
+MANIFEST			This list of files
+META.yml                        Module meta-data (added by MakeMaker)
+NEWS				Latest news
+po/de.mo			German compiled message catalog
+po/de.po			German message catalog
+po/Makefile			Makefile for i18n
+po/PACKAGE			Helper file for i18n
+po/POTFILES.in			List of translatable files
+po/Test-Unit-GTestRunner.pot	Master message catalog
+README-NLS			About NLS
+README				Package Overview
+Suites/Customer.pm              Dummy module being tested
+Suites/CustomerTest1.pm         Dummy test case
+Suites/CustomerTest2.pm         Dummy test case
+Suites/CustomerTest.pm          Dummy test case
+Suites/TS_SubSuite1.pm          Dummy test suite
+Suites/TS_SubSuite2.pm          Dummy test suite
+Suites/TS_SubSuite3.pm          Dummy test suite
+Suites/TS_TopLevel.pm           Dummy test suite that runs the test
+t/00load.t			Very basic test
+THANKS                          Bribe
+TODO				Things left to be done
+TRANSLATIONS			Translation status

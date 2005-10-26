@@ -1,0 +1,1044 @@
+#! /bin/false
+
+# vim: tabstop=4
+# $Id: GTestRunner.pm.in,v 1.21 2005/10/26 16:30:49 guido Exp $
+
+# Copyright (C) 2004-2005 Guido Flohr <guido@imperia.net>,
+# all rights reserved.
+
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2, or (at your option)
+# any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Library General Public License for more details.
+
+# You should have received a copy of the GNU General Public License 
+# along with this program; if not, write to the Free Software Foundation, 
+# Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+
+package Test::Unit::GTestRunner;
+
+use strict;
+
+use constant DEBUG => 0;
+
+use vars qw ($VERSION $PERL @MY_INC);
+$VERSION = '0.01';
+
+use English qw (-no_match_vars);
+BEGIN {
+	$PERL = $EXECUTABLE_NAME; # Aka $^X.
+	@MY_INC = @INC;
+}
+
+use Locale::TextDomain qw (Test-Unit-GTestRunner);
+use Locale::Messages qw (bind_textdomain_filter bind_textdomain_codeset
+						 turn_utf_8_on);
+BEGIN {
+	bind_textdomain_filter 'Test-Unit-GTestRunner', \&turn_utf_8_on;
+	bind_textdomain_codeset 'Test-Unit-GTestRunner', 'utf-8';
+}
+
+use MIME::Base64 qw (decode_base64);
+use Test::Unit::Loader;
+use Test::Unit::GTestRunner::Worker;
+use Config;
+use Gtk2;
+use Gtk2::GladeXML;
+use Config;
+use Storable qw (thaw);
+
+sub new {
+	my $class = shift;
+
+	my $self = {
+		__counter => 0,
+		__errors => 0,
+		__pid => 0,
+		__kill_signals => [],
+		__last_signal => undef,
+		__failures => [],
+		__tests_by_index => [],
+		__tests_by_path => {},
+		__skips_by_path => {},
+	};
+
+	# Should we make sure that init is called only once?
+	Gtk2->init;
+
+	local $/;
+	my $data = <DATA>;
+
+	# It seems that libglade does not consider our call to
+	# bind_textdomain().  We therefore roll our own version.
+	my $gettext = $__;
+	$data =~ s{
+		[ ]translatable="yes">([^<]+)</
+		}{
+			my $string = $1;
+			$string =~ s/&quot;/\"/g;
+			$string =~ s/&apos;/\'/g;
+			$string =~ s/&lt;/</g;
+			$string =~ s/&gt;/>/g;
+			$string =~ s/&amp;/&/g;
+			$string = $gettext->{$string};
+			$string =~ s/&/&amp;/g;
+			$string =~ s/>/&gt;/g;
+			$string =~ s/</&lt;/g;
+			$string =~ s/\'/&apos;/g;
+			$string =~ s/\"/&quot;/g;
+			qq{ translatable="no">$string</};
+	}gex;
+
+	my $gladexml = Gtk2::GladeXML->new_from_buffer ($data);
+
+	bless $self, $class;
+
+	$gladexml->signal_autoconnect_from_package ($self);
+
+	$self->{__gladexml} = $gladexml;
+
+	$self->{__main_window} = $gladexml->get_widget ('GTestRunner');
+
+	my $statusbar = $self->{__statusbar} = 
+		$gladexml->get_widget ('statusbar1');
+	my $context_id = $self->{__context_id} =
+		$statusbar->get_context_id (__PACKAGE__);
+	$statusbar->push ($context_id, ' ' . __"Starting GTestRunner.");
+
+	my $error_textview = $gladexml->get_widget ('errortextview');
+	my $error_textbuffer = Gtk2::TextBuffer->new;
+	$error_textview->set_buffer ($error_textbuffer);
+	$error_textview->set_wrap_mode ('word');
+	$self->{__error_textbuffer} = $error_textbuffer;
+
+	my $progress_bar = $self->{__progress_bar} = 
+		$gladexml->get_widget ('progressbar');
+	my $progress_image = $self->{__progress_image} =
+		$gladexml->get_widget ('progressimage');
+
+	# FIXME: Set progressbar to red/green.
+	
+	my $failure_view = $gladexml->get_widget ('failure_treeview');
+	my $failure_store = Gtk2::ListStore->new ('Glib::String',
+											  'Glib::String', 
+											  'Glib::String');
+	$failure_view->set_model ($failure_store);
+	$self->{__failure_store} = $failure_store;
+	$self->{__failure_view} = $failure_view;
+
+	my $count = 0;
+
+	for my $header (__"Test", __"Test Case", __"Source") {
+		my $renderer = Gtk2::CellRendererText->new;
+		my $column = 
+			Gtk2::TreeViewColumn->new_with_attributes ($header, $renderer,
+													   text => $count++);
+		$column->set_resizable (1);
+		$column->set_expand (1);
+		$failure_view->append_column ($column);
+	}
+
+	$failure_view->signal_connect (cursor_changed => 
+								   sub {
+									   $self->__onFailureChange (@_);
+								   });
+
+	my $hierarchy_view = $gladexml->get_widget ('hierarchy_treeview');
+	my $hierarchy_store = Gtk2::TreeStore->new ('Glib::String', 
+												'Glib::String');
+	$hierarchy_view->set_model ($hierarchy_store);
+	$self->{__hierarchy_store} = $hierarchy_store;
+	$self->{__hierarchy_view} = $hierarchy_view;
+
+	$hierarchy_view->signal_connect (cursor_changed => 
+									 sub {
+										 $self->__onHierarchyChange (@_);
+									 });
+
+	$hierarchy_view->signal_connect (row_activated => 
+								   sub {
+									   $self->__onHierarchyActivated (@_);
+								   });
+
+	my $column = Gtk2::TreeViewColumn->new;
+
+	$column->set_title (__"Test");
+	$hierarchy_view->append_column ($column);
+
+	my $pixbuf_renderer = Gtk2::CellRendererPixbuf->new;
+	$column->pack_start ($pixbuf_renderer, 0);
+	$column->add_attribute ($pixbuf_renderer, 'stock-id' => 1);
+
+	my $text_renderer = Gtk2::CellRendererText->new;
+	$column->pack_start ($text_renderer, 1);
+	$column->add_attribute ($text_renderer, text => 0);
+
+	# It would be sufficient to set this up only once, but we want
+	# to avoid both a global and complication.
+	$self->{__kill_signals} = [];
+	if ($Config{sig_name}) {
+		my $i = 0;
+		my %signo = ();
+		foreach my $name (split / +/, $Config{sig_name}) {
+			$signo{$name} = $i if ($name eq 'TERM'
+								   || $name eq 'QUIT'
+								   || $name eq 'KILL');
+			++$i;
+		}
+		my @killers;
+		push @killers, [ TERM => $signo{TERM} ] if $signo{TERM};
+		push @killers, [ QUIT => $signo{QUIT} ] if $signo{QUIT};
+		push @killers, [ KILL => $signo{KILL} ] if $signo{KILL};
+		$self->{__kill_signals} = \@killers;
+	}
+
+	my $notebook = $gladexml->get_widget ('notebook');
+	$notebook->signal_connect (switch_page => 
+								   sub {
+									   $self->__onSwitchPage (@_);
+								   });
+
+	# Otherwise a zero kill will report on Zombies.
+	$SIG{CHLD} = 'IGNORE' if exists $SIG{CHLD};
+
+	return $self;
+}
+
+sub start {
+    my ($self, @args) = @_;
+
+    $self->{__suite} = $self->{__arg} = shift @args;
+	$self->__loadSuite;
+
+    my $gladexml = $self->{__gladexml};
+    
+    if ($self->{__suite}) {
+		$gladexml->get_widget ('run_menu_item')->set_sensitive (1);
+		$gladexml->get_widget ('run_button')->set_sensitive (1);
+    } else {
+		$gladexml->get_widget ('run_menu_item')->set_sensitive (0);
+		$gladexml->get_widget ('run_button')->set_sensitive (0);
+    }
+    
+    Gtk2->main;
+
+    return 1;
+}
+
+sub main {
+    Test::Unit::GTestRunner->new->start (@_);
+}
+
+sub __runTests {
+	my $self = shift;
+
+	Glib::Source->remove ($self->{__timeout_id}) if $self->{__timeout_id};
+
+	my $gladexml = $self->{__gladexml};
+
+	$gladexml->get_widget ('cancel_menu_item')->set_sensitive (1);
+	$gladexml->get_widget ('cancel_button')->set_sensitive (1);
+
+	$gladexml->get_widget ('run_menu_item')->set_sensitive (0);
+	$gladexml->get_widget ('run_button')->set_sensitive (0);
+
+	$gladexml->get_widget ('run_selected_menu_item')->set_sensitive (0);
+	$gladexml->get_widget ('run_selected_button')->set_sensitive (0);
+
+	$self->__setErrorTextBuffer ('');
+	$self->{__progress_bar}->set_fraction (0);
+	$self->{__failure_store}->clear;
+	$self->{__failures} = [];
+	$self->{__results} = [];
+	$self->{__errors} = 0;
+	$self->{__counter} = 0;
+	$self->{__progress_image}->set_from_stock ('gtk-apply', 'button');
+
+	my $suite = $self->{__suite};
+	$suite =~ s/\'/\\\'/g;
+
+	if ($self->{__selected_module}) {
+		$suite = $self->{__selected_module};
+		$self->{__counter} = $self->{__counter_offset};
+	}
+
+	my @local_inc = map { '-I' . $_ } @MY_INC;
+	local *CMD;
+	my @cmd = ($PERL, 
+			   @local_inc,
+			   '-MTest::Unit::GTestRunner::Worker',
+			   #'-d:ptkdb',
+			   '-e', 
+			   "Test::Unit::GTestRunner::Worker->new->start ('$suite')",
+			   );
+
+	unless (open CMD, '-|', @cmd) {
+		my $message = __"Cannot start test: ";
+		$message .= pop @cmd;
+
+		foreach my $part (@cmd) {
+			my $arg = quotemeta $part;
+			$message .= " $part";
+		}
+		$message .= ": $!";
+		$self->__setErrorTextBuffer ($message);
+		return;
+	}
+	$self->{__cmd_fileno} = fileno CMD;
+	$self->{__cmd_fh} = *CMD;
+
+	$self->__setStatusBar (__"Running ...");
+
+	$self->{__timeout_id} = Glib::Timeout->add (40, sub {
+	    $self->__handleReply;
+	    return 1;
+	});
+
+	return 1;
+}
+
+sub __runSelectedTests {
+	my $self = shift;
+
+	my $hierarchy_view = $self->{__hierarchy_view};
+
+	my ($path, $column) = $hierarchy_view->get_cursor;
+	
+	my $path_str = $path->to_string;
+	
+	my $record = $self->{__tests_by_path}->{$path_str};
+
+	my $module;
+	my $store = $self->{__hierarchy_store};
+	my $iterator = $store->get_iter ($path);
+	
+	if ($record) {
+		$path_str =~ /:([0-9]+)$/;
+		my $testno = $1;
+		$path->up;
+		
+		($module) = $store->get ($store->get_iter ($path));
+		# The number serves as the identifier for our worker thread 
+		# here.  Remember that Perl module names cannot start with
+		# a number.
+		$module .= "::$testno";
+	} else {
+		($module) = $store->get ($store->get_iter ($path));
+	}
+
+	# assert (exists $self->{__skips_by_path});
+	$self->{__counter_offset} = $self->{__skips_by_path}->{$path_str};
+	$self->{__selected_module} = $module;
+
+	$self->__runTests;
+
+	return 1;
+}
+
+sub __terminateTests {
+	my ($self, $message) = @_;
+
+	$self->__setStatusBar ($message) if defined $message;
+
+	$self->__sendKill;
+
+	return 1;
+}
+
+sub __cancelTests {
+	shift->__terminateTests (__"Waiting for test to terminate ...");
+}
+
+sub __loadSuite {
+	my ($self) = @_;
+
+	$self->{__tests_by_index} = [];
+	$self->{__tests_by_path} = {};
+	$self->{__skips_by_path} = {};
+	
+	$self->{__failure_store}->clear;
+	$self->__setErrorTextBuffer ('');
+
+	my $store = $self->{__hierarchy_store};
+	my $view = $self->{__hierarchy_view};
+
+	$store->clear;
+
+	my $suite_name = $self->{__suite};
+
+	my $suite = eval { Test::Unit::Loader::load ($suite_name) };
+	if ($@) {
+		$self->__setErrorTextBuffer ($@);
+		$self->__resetGUI;
+		return;
+	}
+	
+	$self->__appendSuite ($suite);
+
+	return 1;
+}
+
+sub __appendSuite {
+	my ($self, $suite, $parent) = @_;
+
+	my $name = "$suite";
+	$name =~ s/=.*//;
+	my $is_single_test;
+	my $stock_id;
+
+	if ($name eq 'Test::Unit::TestSuite') {
+		$name = $suite->name;
+		$name =~ s/^suite extracted from //;
+	} elsif (exists $suite->{'Test::Unit::TestCase_name'}) {
+		# Not very polite to use a private property, but the interface
+		# gives no other chance.
+		$name = $suite->{'Test::Unit::TestCase_name'};
+		$is_single_test = 1;
+		$stock_id = 'gtk-yes';
+	}
+
+	my $store = $self->{__hierarchy_store};
+	my $iterator = $store->append ($parent);
+	my $path = $store->get_path ($iterator);
+	$self->{__skips_by_path}->{$path->to_string} = 
+		@{$self->{__tests_by_index}};
+
+	if ($is_single_test) {
+		my $record = {
+			hierarchy_path => $path->to_string,
+			result => '',
+		};
+		push @{$self->{__tests_by_index}}, $record;
+		$self->{__tests_by_path}->{$path->to_string} = $record;
+	}
+	
+	$store->set ($iterator,
+				 0 => $name,
+				 1 => $stock_id);
+
+	if ($suite->can ('tests')) {
+		my $children = $suite->tests;
+		
+		foreach my $child (@$children) {
+			$self->__appendSuite ($child, $iterator);
+		}
+	}
+
+	return 1;
+}
+
+sub __selectTestCase {
+	my ($self, $path_string) = @_;
+
+	my $record = $self->{__tests_by_path}->{$path_string};
+
+	my $gladexml = $self->{__gladexml};
+	$gladexml->get_widget ('run_selected_button')->set_sensitive (1);
+	$gladexml->get_widget ('run_selected_menu_item')->set_sensitive (1);
+
+	unless ($record) {
+		# Must be an inner node of the tree.
+		$self->__setErrorTextBuffer ('');
+
+		my $tree_selection = $self->{__failure_view}->get_selection;
+		$tree_selection->unselect_all;
+
+		return 1;
+	}
+
+	# This is a leaf, and we have a corresponding test case.
+	$self->__setErrorTextBuffer ($record->{result});
+	my $hierarchy_path = Gtk2::TreePath->new_from_string ($path_string);
+	if ($hierarchy_path) {
+		my $view = $self->{__hierarchy_view};
+		my ($old_path, undef) = $view->get_cursor;
+		
+		if (!defined $old_path || $old_path->compare ($hierarchy_path)) {
+			$view->expand_to_path ($hierarchy_path);
+			$view->scroll_to_cell ($hierarchy_path);
+			$view->get_selection->select_path ($hierarchy_path);
+			$view->set_cursor ($hierarchy_path);
+		}
+	}
+
+	my $failure_index = $record->{failure_index};
+
+	if (defined $failure_index) {
+		my $failure_path = Gtk2::TreePath->new_from_string ($failure_index);
+
+		if ($failure_path) {
+			my $view = $self->{__failure_view};
+			
+			my ($old_path, undef) = $view->get_cursor;
+
+			if (!defined $old_path 
+				|| $old_path->compare ($failure_path)) {
+				$view->expand_to_path ($failure_path);
+				$view->scroll_to_cell ($failure_path);
+				$view->get_selection->select_path ($failure_path);
+				$view->set_cursor ($failure_path);
+			}
+		}
+	} else {
+		# Unselect.
+		my $tree_selection = $self->{__failure_view}->get_selection;
+		$tree_selection->unselect_all;
+	}
+
+	return 1;
+}
+
+sub __setStatusBar {
+	my ($self, $msg) = @_;
+
+	my $statusbar = $self->{__statusbar};
+	my $context_id = $self->{__context_id};
+
+	$statusbar->pop ($context_id);
+
+	$context_id = $self->{__context_id} =
+		$statusbar->get_context_id (__PACKAGE__);
+
+	$statusbar->push ($context_id, ' ' . $msg);
+
+	return 1;
+}
+
+sub __onHierarchyChange {
+	my ($self, $view) = @_;
+
+	my ($path, $focus_column) = $view->get_cursor;
+
+	if ($path) {
+		my $str_path = $path->to_string;
+
+		return $self->__selectTestCase ($str_path);
+	}
+
+	$self->__setErrorTextBuffer ('');
+
+	return 1;
+}
+
+sub __onFailureChange {
+	my ($self, $view) = @_;
+
+	my ($path, $focus_column) = $view->get_cursor;
+
+	if ($path) {
+		# Is that really the correct way to retrieve the index???
+		my $index = $path->to_string;
+		my $test_index = $self->{__failures}->[0 + $index];
+		my $record = $self->{__tests_by_index}->[$test_index];
+
+		my $gladexml = $self->{__gladexml};
+		my $button = $gladexml->get_widget ('run_selected_button');
+		$button->set_sensitive  (1);
+		my $item = $gladexml->get_widget ('run_selected_menu_item');
+		$item->set_sensitive  (1);
+
+		return $self->__selectTestCase ($record->{hierarchy_path});
+	}
+
+	$self->__setErrorTextBuffer ('');
+
+	return 1;
+}
+
+sub __onHierarchyActivated {
+	my ($self, $view, $path) = @_;
+
+	return 1 if $self->{__tests_by_path}->{$path->to_string};
+
+	$view->row_expanded ($path) ? 
+		$view->collapse_row ($path) : $view->expand_row ($path, 1);
+
+	return 1;
+}
+
+sub __onSwitchPage {
+	my ($self, $notebook, undef, $current_page) = @_;
+
+	return 1 unless $self->{__suite};
+
+	my $view = $current_page == 0 ?
+		$self->{__failure_view} : $self->{__hierarchy_view};
+
+	my $selection = $view->get_selection;
+
+	my $selected = $selection->count_selected_rows;
+	
+	my $gladexml = $self->{__gladexml};
+
+	if ($selected) {
+		$gladexml->get_widget ('run_selected_menu_item')->set_sensitive (1);
+		$gladexml->get_widget ('run_selected_button')->set_sensitive (1);
+	} else {
+		$gladexml->get_widget ('run_selected_menu_item')->set_sensitive (0);
+		$gladexml->get_widget ('run_selected_button')->set_sensitive (0);
+	}
+		
+	return 1;
+}
+
+sub __quitApplication {
+	Gtk2->main_quit;
+}
+
+sub __showAboutDialog {
+	my ($self) = @_;
+
+	Gtk2->show_about_dialog ($self->{__main_window},
+							 name => 'GTestRunner',
+							 version => $VERSION,
+							 authors => [ 'Guido Flohr <guido@imperia.net>' ],
+							 translator_credits => 
+							 # TRANSLATORS: Replace this string with your
+							 # own names and e-mail addresses, one name
+							 # per line.
+							 __"translator-credits"
+							 );
+}
+
+# FIXME: How do we teach Gtk2::FileSelection to continue in the same
+# directory that the last time was selected?  Do we really have to
+# chdir forth and back?
+sub __showFileSelection {
+	my ($self) = @_;
+
+	# The new Gtk2::FileChooserDialog cannot be used here because 
+	# it sucks.  Besides it requires Gtk 2.4.x or better.
+	my $dialog = Gtk2::FileSelection->new (__("Select a test suite or " .
+											  "test case to run!"));
+	my $result = $dialog->run;
+
+	$self->{__suite} = $dialog->get_selections if 'ok' eq $result;
+	$self->__loadSuite;
+
+	$dialog->destroy;
+
+	return 1;
+}
+
+sub __handleReply {
+	my ($self) = @_;
+
+	my $rin = '';
+	vec ($rin, $self->{__cmd_fileno}, 1) = 1;
+
+	my $win = my $ein = '';
+	my $nfound = select $rin, $win, $ein, 0;
+	return $self->_terminateTests (__x ("Select on pipe to child process " .
+										"failed: {err}.", err => $!))
+		if $nfound < 0;
+
+	return unless $nfound;
+
+	my $num_bytes;
+	my $bytes = sysread $self->{__cmd_fh}, $num_bytes, 9;
+	return $self->__terminateTests ("Unexpected end of file while reading " .
+									"from child process.") unless $bytes;
+
+	return $self->__terminateTests (__x ("read from pipe to child process " .
+									"failed: {err}.", err => $!))
+		if $bytes < 0;
+
+	chop $num_bytes;
+	$num_bytes = hex $num_bytes;
+	return $self->__terminateTests ("Unexpected end of file while reading " .
+									"from child process.") if $bytes <= 0;
+
+	my $reply;
+	$bytes = sysread $self->{__cmd_fh}, $reply, $num_bytes;
+	return $self->__terinateTests ("Unexpected end of file while reading " .
+								   "from child process.") unless $bytes;
+	return $self->__terminateTests (__x ("Read from pipe to child process " .
+										 "failed: {err}.", err => $!))
+		if $bytes < 0;
+	$num_bytes = hex $num_bytes;
+	return $self->__terminateTests ("Protocol error: Invalid number of " .
+									"bytes in reply from child process.")
+		if $bytes <= 0;
+	chop $reply;
+
+	warn "<<< REPLY: $reply\n" if DEBUG;
+
+	my ($cmd, $args) = split / +/, $reply, 2;
+
+	my $method = '__handleReply' . ucfirst $cmd;
+
+	warn "+++ REPLY: $reply\n" if DEBUG;
+	$self->$method ($args);
+
+	return 1;
+}
+
+sub __handleReplyPid {
+	my ($self, $pid) = @_;
+
+	$self->{__pid} = $pid;
+
+	return 1;
+}
+
+sub __resetGUI {
+    my $self = shift;
+    
+    my $gladexml = $self->{__gladexml};
+    
+    $gladexml->get_widget ('cancel_menu_item')->set_sensitive (0);
+    $gladexml->get_widget ('cancel_button')->set_sensitive (0);
+    
+    if ($self->{__suite}) {
+		my $notebook = $gladexml->get_widget ('notebook');
+		my $current_page = $notebook->get_current_page;
+		my $view = $current_page == 0 ? 
+			$self->{__failure_view} : $self->{__hierarchy_view};
+		my $selected = $view->get_selection->count_selected_rows;
+
+		$gladexml->get_widget ('run_selected_button')
+			->set_sensitive ($selected);
+		$gladexml->get_widget ('run_selected_menu_item')
+			->set_sensitive ($selected);
+		$gladexml->get_widget ('run_menu_item')->set_sensitive (1);
+		$gladexml->get_widget ('run_button')->set_sensitive (1);
+
+    } else {
+		$gladexml->get_widget ('run_selected_button')->set_sensitive (0);
+		$gladexml->get_widget ('run_selected_menu_item')->set_sensitive (0);
+		$gladexml->get_widget ('run_menu_item')->set_sensitive (0);
+		$gladexml->get_widget ('run_button')->set_sensitive (0);
+    }
+    
+    Glib::Source->remove ($self->{__timeout_id}) if $self->{__timeout_id};
+    $self->{__pid} = 0;
+	undef $self->{__last_signal};
+
+	return 1;
+}
+
+sub __handleReplyTerminated {
+    my $self = shift;
+	$self->__resetGUI;
+    $self->__setStatusBar (__"Test terminated.");
+	delete $self->{__counter_offset};
+	delete $self->{__selected_module};
+
+    return 1;
+}
+
+sub __handleReplyStart {
+    my ($self, $test) = @_;
+
+    $self->__setStatusBar (__x"Running: {test}", test => $test);
+
+	my $num_tests = $self->{__counter};
+	$num_tests -= $self->{__counter_offset} if
+		defined $self->{__counter_offset};
+
+	my $num_errors = $self->{__errors};
+	my $num_failures = @{$self->{__failures}} - $num_errors;
+	my $message = __nx ("one test, ", "{num_tests} tests, ", $num_tests,
+						num_tests => $num_tests);
+	$message .= __nx ("one error, ", "{num_errors} errors, ", $num_errors,
+						num_errors => $num_errors);
+	$message .= __nx ("one failure", "{num_failures} failures", $num_failures,
+						num_failures => $num_failures);
+
+	$self->{__progress_bar}->set_text ($message);
+
+    return 1;
+}
+
+sub __handleReplyEnd {
+    my ($self, $test) = @_;
+
+	++$self->{__counter};
+
+	my $num_tests = $self->{__counter};
+	$num_tests -= $self->{__counter_offset} if
+		defined $self->{__counter_offset};
+	my $fraction = $self->{__planned} ? 
+		($num_tests / $self->{__planned}) : 1;
+	$self->{__progress_bar}->set_fraction ($fraction);
+
+	my $num_errors = $self->{__errors};
+	my $num_failures = @{$self->{__failures}} - $num_errors;
+	my $message = __nx ("one test, ", "{num_tests} tests, ", $num_tests,
+						num_tests => $num_tests);
+	$message .= __nx ("one error, ", "{num_errors} errors, ", $num_errors,
+						num_errors => $num_errors);
+	$message .= __nx ("one failure", "{num_failures} failures", $num_failures,
+						num_failures => $num_failures);
+
+	$self->{__progress_bar}->set_text ($message);
+
+    return 1;
+}
+
+sub __handleReplyFailure {
+    my ($self, $reply) = @_;
+
+    my ($test, $obj) = split / +/, $reply, 2;
+
+    $self->__setStatusBar (__x"Failure: {test}", test => $test);
+
+    my $failure = thaw decode_base64 $obj;
+
+	my $package = $failure->{package};
+	my $file = $failure->{file};
+	my $line = $failure->{line};
+	my $text = $failure->{text};
+
+	my $failure_store = $self->{__failure_store};
+	$failure_store->set ($failure_store->append,
+						0 => $test,
+						1 => $package,
+						2 => "$file:$line");
+
+    $self->__setErrorTextBuffer ($text);
+	push @{$self->{__failures}}, $self->{__counter};
+	my $record = $self->{__tests_by_index}->[$self->{__counter}];
+
+	$record->{result} = $text;
+	$record->{failure_index} = $#{$self->{__failures}};
+
+	$self->{__progress_image}->set_from_stock ('gtk-dialog-error', 'button');
+
+	my $store = $self->{__hierarchy_store};
+
+	my $hpath = Gtk2::TreePath->new_from_string ($record->{hierarchy_path});
+	my $iterator = $store->get_iter ($hpath);
+	$store->set ($iterator, 1 => 'gtk-dialog-error');
+
+	my $num_failures = @{$self->{__failures}};
+
+	$record->{failure_path} = $num_failures;
+
+	$self->__selectTestCase ($record->{hierarchy_path});
+	
+    return 1;
+}
+
+sub __handleReplyError {
+    my ($self, $reply) = @_;
+
+	++$self->{__errors};
+	$self->__handleReplyFailure ($reply);
+}
+
+sub __handleReplyPlanned {
+	my ($self, $planned) = @_;
+
+	$self->{__planned} = $planned;
+
+	return 1;
+}
+
+# FIXME! What should happen here?
+sub __handleReplyWarning {
+	my ($self, $warning) = @_;
+
+	warn "$warning\n";
+
+	return 1;
+}
+
+sub __setErrorTextBuffer {
+	my ($self, $text) = @_;
+
+	$self->{__error_textbuffer}->set_text ($text);
+
+	return 1;
+}
+
+sub __handleReplyAbort {
+	my ($self, $message) = @_;
+
+	$self->__setErrorTextBuffer ($message);
+	$self->__handleReplyTerminated;
+	$self->__setStatusBar (__"Test aborted.");
+
+	return 1;
+}
+
+sub __sendKill {
+	my ($self) = @_;
+
+	Glib::Source->remove ($self->{__timeout_id}) if $self->{__timeout_id};
+	return 1 unless $self->{__pid};
+
+	# Still alive?
+	my $alive = kill 0 => $self->{__pid};
+	unless ($alive) {
+		$self->__resetGUI;
+		$self->__setStatusBar (__"Test process terminated.");
+		return 1;
+	}
+
+	$self->{__last_signal} = -1 unless defined $self->{__last_signal};
+	
+	++$self->{__last_signal};
+
+	unless (defined $self->{__kill_signals}->[$self->{__last_signal}]) {
+		$self->__resetGUI;
+		$self->__setStatusBar (__"Giving up on killing child process.");
+		return 1;
+	}
+
+	my ($signame, $signo) = 
+		@{$self->{__kill_signals}->[$self->{__last_signal}]};
+
+	$self->__setStatusBar (__x ("Sending child process SIG{NAME}.",
+								NAME => $signame));
+	kill $signo => $self->{__pid};
+	
+	$self->{__timeout_id} = Glib::Timeout->add (1500, sub {
+	    $self->__sendKill;
+	    return 1;
+	});
+
+	return 1;
+}
+	
+1;
+
+=head1 NAME
+
+Test::Unit::GTestRunner - unit testing framework helper class
+
+=head1 SYNOPSIS
+
+ use Test::Unit::GTestRunner;
+
+ Test::Unit::GTestRunner->new->start ($my_testcase_class);
+
+ Test::Unit::GTestRunner::main ($my_testcase_class);
+
+=head1 DESCRIPTION
+
+If you just want to run a unit test (suite), try it like this:
+
+    gtestrunner "MyTestSuite.pm"
+
+Try "perldoc gtestrunner" or "man gtestrunner" for more information.
+
+This class is a GUI test runner using the Gimp Toolkit Gtk+ (which
+is called Gtk2 in Perl).  You can use it if you want to integrate
+the testing framework into your own application.
+
+For a description of the graphical user interface, please see
+gtestrunner(1).
+
+=head1 EXAMPLE
+
+You will usually invoke it from a runner script like this:
+
+    #! /usr/local/bin/perl -w
+
+    use strict;
+  
+    require Test::Unit::GTestRunner;
+
+    Test::Unit::GTestRunner::main (@ARGV) or exit 1;
+
+See Test::Unit::TestRunner (3) for details.
+
+An internationalized version would go like this:
+
+    #!/usr/bin/perl -w
+
+    use strict;
+
+    use Test::Unit::GTestRunner;
+    use POSIX;
+    use Locale::Messages qw (LC_ALL);
+
+    POSIX::setlocale (LC_ALL, "");
+
+    Test::Unit::GTestRunner::main (@ARGV) or exit (1);
+
+=head1 CONSTRUCTOR
+
+=over 4
+
+=item B<new>
+
+The constructor takes no arguments.  It will throw an exception in
+case of failure.
+
+=back
+
+=head1 METHODS
+
+=over 4
+
+=item B<start SUITE>
+
+The method fires up the graphical user interface and will never
+return.
+
+The optional argument B<SUITE> can either be the name of a file
+containing a test suite (see Test::Unit::TestSuite(3pm)), for
+example "TS_MySuite.pm", or the name of a Perl module, for example
+"Tests::TS_MySuite".
+
+=back
+
+=head1 FUNCTIONS
+
+=over 4
+
+=item B<main SUITE>
+
+If you prefer a functional interface, you can also start a test
+session with
+
+    Test::Unit::GTestRunner::main ($suite_name);
+
+The optional argument B<SUITE> is interpreted as described above
+for the method start().
+
+=back
+
+=head1 AUTHOR
+
+Copyright (C) 2004-2005, Guido Flohr E<lt>guido@imperia.netE<gt>, all
+rights reserved.  See the source code for details.
+
+This software is contributed to the Perl community by Imperia 
+ (L<http://www.imperia.net/>).
+
+=head1 ENVIRONMENT
+
+The package is internationalized with libintl-perl, hence the 
+environment variables "LANGUAGE", "LANG", "LC_MESSAGES", and
+"LC_ALL" will influence the language in which the GUI and 
+messages are presented.
+
+=head1 SEE ALSO
+
+gtestrunner(1), Test::Unit::TestRunner(3pm), Test::Unit(3pm), 
+Locale::Messages(3pm), perl(1)
+
+=cut
+
+#Local Variables:
+#mode: perl
+#perl-indent-level: 4
+#perl-continued-statement-offset: 4
+#perl-continued-brace-offset: 0
+#perl-brace-offset: -4
+#perl-brace-imaginary-offset: 0
+#perl-label-offset: -4
+#cperl-indent-level: 4
+#cperl-continued-statement-offset: 2
+#tab-width: 4
+#End:
+
+__DATA__

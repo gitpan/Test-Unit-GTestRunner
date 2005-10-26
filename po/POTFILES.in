@@ -1,0 +1,3 @@
+../gtestrunner.glade
+../lib/Test/Unit/GTestRunner.pm
+../lib/Test/Unit/GTestRunner/Worker.pm
