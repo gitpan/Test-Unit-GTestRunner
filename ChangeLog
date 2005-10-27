@@ -1,6 +1,61 @@
+2005-10-27 14:20  Guido Flohr <guido@imperia.net>
+
+	* META.yml: updated
+
+2005-10-27 14:16  Guido Flohr <guido@imperia.net>
+
+	* NEWS, ChangeLog: updated
+
+2005-10-27 14:14  Guido Flohr <guido@imperia.net>
+
+	* MANIFEST, README, README-TRANSLATIONS, TRANSLATIONS: renamed
+	  TRANSLATIONS to README-TRANSLATIONS
+
+2005-10-27 14:13  Guido Flohr <guido@imperia.net>
+
+	* MANIFEST.SKIP: added .bak files
+
+2005-10-27 13:57  Guido Flohr <guido@imperia.net>
+
+	* lib/LocaleData/de/LC_MESSAGES/Test-Unit-GTestRunner.mo,
+	  lib/Test/Unit/GTestRunner.pm, po/Test-Unit-GTestRunner.pot,
+	  po/de.mo, po/de.po: updated/regenerated
+
+2005-10-27 13:07  Guido Flohr <guido@imperia.net>
+
+	* gtestrunner.glade: fixed callbacks
+
+2005-10-27 13:02  Guido Flohr <guido@imperia.net>
+
+	* gtestrunner.glade: reverted back to release version (0.01)
+
+2005-10-27 12:45  Guido Flohr <guido@imperia.net>
+
+	* ChangeLog, GTestRunner.pm.in, gtestrunner.glade,
+	  lib/Test/Unit/GTestRunner.pm: removed refresh stuff
+
+2005-10-27 11:45  Guido Flohr <guido@imperia.net>
+
+	* GTestRunner.pm.in, gtestrunner.glade,
+	  lib/Test/Unit/GTestRunner.pm:
+	  - fixed various callbacks for signals
+	  - added suite refresh stuff
+
+2005-10-27 11:08  Guido Flohr <guido@imperia.net>
+
+	* GTestRunner.pm.in: version number
+
+2005-10-26 21:48  Guido Flohr <guido@imperia.net>
+
+	* MANIFEST.SKIP: added .cvsignore
+
+2005-10-26 21:48  Guido Flohr <guido@imperia.net>
+
+	* GTestRunner.pl: obsolete
+
 2005-10-26 21:44  Guido Flohr <guido@imperia.net>
 
-	* MANIFEST, MANIFEST.SKIP, TODO: updated
+	* MANIFEST, MANIFEST.SKIP, TODO, ChangeLog, NEWS: updated
 
 2005-10-26 21:44  Guido Flohr <guido@imperia.net>
 

@@ -1,7 +1,7 @@
 #! /bin/false
 
 # vim: tabstop=4
-# $Id: GTestRunner.pm.in,v 1.21 2005/10/26 16:30:49 guido Exp $
+# $Id: GTestRunner.pm.in,v 1.24 2005/10/27 10:45:24 guido Exp $
 
 # Copyright (C) 2004-2005 Guido Flohr <guido@imperia.net>,
 # all rights reserved.
@@ -27,7 +27,7 @@ use strict;
 use constant DEBUG => 0;
 
 use vars qw ($VERSION $PERL @MY_INC);
-$VERSION = '0.01';
+$VERSION = '0.02';
 
 use English qw (-no_match_vars);
 BEGIN {
@@ -362,6 +362,8 @@ sub __loadSuite {
 	$self->{__skips_by_path} = {};
 	
 	$self->{__failure_store}->clear;
+	$self->{__hierarchy_store}->clear;
+
 	$self->__setErrorTextBuffer ('');
 
 	my $store = $self->{__hierarchy_store};
@@ -371,14 +373,20 @@ sub __loadSuite {
 
 	my $suite_name = $self->{__suite};
 
+	# Make sure that all suites get recompiled.
+	my %saved_inc = %INC;
+
 	my $suite = eval { Test::Unit::Loader::load ($suite_name) };
 	if ($@) {
 		$self->__setErrorTextBuffer ($@);
 		$self->__resetGUI;
+		%INC = %saved_inc;
 		return;
 	}
 	
 	$self->__appendSuite ($suite);
+
+	%INC = %saved_inc;
 
 	return 1;
 }
@@ -438,8 +446,13 @@ sub __selectTestCase {
 	my $record = $self->{__tests_by_path}->{$path_string};
 
 	my $gladexml = $self->{__gladexml};
-	$gladexml->get_widget ('run_selected_button')->set_sensitive (1);
-	$gladexml->get_widget ('run_selected_menu_item')->set_sensitive (1);
+	unless ($self->{__pid}) {
+		$gladexml->get_widget ('run_selected_button')->set_sensitive (1);
+		$gladexml->get_widget ('run_selected_menu_item')->set_sensitive (1);
+	} else {
+		$gladexml->get_widget ('run_selected_button')->set_sensitive (0);
+		$gladexml->get_widget ('run_selected_menu_item')->set_sensitive (0);
+	}
 
 	unless ($record) {
 		# Must be an inner node of the tree.

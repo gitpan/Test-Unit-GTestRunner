@@ -17,8 +17,9 @@ po/Makefile			Makefile for i18n
 po/PACKAGE			Helper file for i18n
 po/POTFILES.in			List of translatable files
 po/Test-Unit-GTestRunner.pot	Master message catalog
-README-NLS			About NLS
 README				Package Overview
+README-NLS			About NLS
+README-TRANSLATIONS		Translation status
 Suites/Customer.pm              Dummy module being tested
 Suites/CustomerTest1.pm         Dummy test case
 Suites/CustomerTest2.pm         Dummy test case
@@ -30,4 +31,3 @@ Suites/TS_TopLevel.pm           Dummy test suite that runs the test
 t/00load.t			Very basic test
 THANKS                          Bribe
 TODO				Things left to be done
-TRANSLATIONS			Translation status

@@ -36,9 +36,9 @@ and you have probably guessed that this is intentionally, so that
 you can see all features.
 
 GTestRunner is fully internationalized.  See the file README-NLS
-for details.  See the file TRANSLATIONS for information about
+for details.  See the file README-TRANSLATIONS for information about
 the currently available languages.  Feel free to contact the author
 if you want to contribute a translation for your own native
 langauge.
 
-$Id: README,v 1.1 2005/10/26 15:44:35 guido Exp $
+$Id: README,v 1.2 2005/10/27 12:14:25 guido Exp $

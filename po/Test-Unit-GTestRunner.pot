@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: Guido Flohr <guido@imperia.net>\n"
-"POT-Creation-Date: 2005-10-26 21:34+0200\n"
+"POT-Creation-Date: 2005-10-27 13:56+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -96,77 +96,77 @@ msgstr ""
 #. TRANSLATORS: Replace this string with your
 #. own names and e-mail addresses, one name
 #. per line.
-#: ../lib/Test/Unit/GTestRunner.pm:604
+#: ../lib/Test/Unit/GTestRunner.pm:617
 msgid "translator-credits"
 msgstr ""
 
-#: ../lib/Test/Unit/GTestRunner.pm:616
+#: ../lib/Test/Unit/GTestRunner.pm:629
 msgid "Select a test suite or test case to run!"
 msgstr ""
 
-#: ../lib/Test/Unit/GTestRunner.pm:636
+#: ../lib/Test/Unit/GTestRunner.pm:649
 #, perl-brace-format
 msgid "Select on pipe to child process failed: {err}."
 msgstr ""
 
-#: ../lib/Test/Unit/GTestRunner.pm:647
+#: ../lib/Test/Unit/GTestRunner.pm:660
 #, perl-brace-format
 msgid "read from pipe to child process failed: {err}."
 msgstr ""
 
-#: ../lib/Test/Unit/GTestRunner.pm:660
+#: ../lib/Test/Unit/GTestRunner.pm:673
 #, perl-brace-format
 msgid "Read from pipe to child process failed: {err}."
 msgstr ""
 
-#: ../lib/Test/Unit/GTestRunner.pm:728
+#: ../lib/Test/Unit/GTestRunner.pm:741
 msgid "Test terminated."
 msgstr ""
 
-#: ../lib/Test/Unit/GTestRunner.pm:738
+#: ../lib/Test/Unit/GTestRunner.pm:751
 #, perl-brace-format
 msgid "Running: {test}"
 msgstr ""
 
-#: ../lib/Test/Unit/GTestRunner.pm:746 ../lib/Test/Unit/GTestRunner.pm:772
+#: ../lib/Test/Unit/GTestRunner.pm:759 ../lib/Test/Unit/GTestRunner.pm:785
 #, perl-brace-format
 msgid "one test, "
 msgid_plural "{num_tests} tests, "
 msgstr[0] ""
 msgstr[1] ""
 
-#: ../lib/Test/Unit/GTestRunner.pm:748 ../lib/Test/Unit/GTestRunner.pm:774
+#: ../lib/Test/Unit/GTestRunner.pm:761 ../lib/Test/Unit/GTestRunner.pm:787
 #, perl-brace-format
 msgid "one error, "
 msgid_plural "{num_errors} errors, "
 msgstr[0] ""
 msgstr[1] ""
 
-#: ../lib/Test/Unit/GTestRunner.pm:750 ../lib/Test/Unit/GTestRunner.pm:776
+#: ../lib/Test/Unit/GTestRunner.pm:763 ../lib/Test/Unit/GTestRunner.pm:789
 #, perl-brace-format
 msgid "one failure"
 msgid_plural "{num_failures} failures"
 msgstr[0] ""
 msgstr[1] ""
 
-#: ../lib/Test/Unit/GTestRunner.pm:789
+#: ../lib/Test/Unit/GTestRunner.pm:802
 #, perl-brace-format
 msgid "Failure: {test}"
 msgstr ""
 
-#: ../lib/Test/Unit/GTestRunner.pm:865
+#: ../lib/Test/Unit/GTestRunner.pm:878
 msgid "Test aborted."
 msgstr ""
 
-#: ../lib/Test/Unit/GTestRunner.pm:880
+#: ../lib/Test/Unit/GTestRunner.pm:893
 msgid "Test process terminated."
 msgstr ""
 
-#: ../lib/Test/Unit/GTestRunner.pm:890
+#: ../lib/Test/Unit/GTestRunner.pm:903
 msgid "Giving up on killing child process."
 msgstr ""
 
-#: ../lib/Test/Unit/GTestRunner.pm:897
+#: ../lib/Test/Unit/GTestRunner.pm:910
 #, perl-brace-format
 msgid "Sending child process SIG{NAME}."
 msgstr ""

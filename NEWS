@@ -1,3 +1,8 @@
-Version 0.01 - 26 October 2005
+Version 0.02 - 27 Oct 2005
+
+* Some toolbar buttons did not work because they triggered
+  the wrong callback
+
+Version 0.01 - 26 Oct 2005
 
 * First version

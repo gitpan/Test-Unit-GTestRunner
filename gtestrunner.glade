@@ -60,7 +60,7 @@
 		      <property name="visible">True</property>
 		      <property name="label">gtk-quit</property>
 		      <property name="use_stock">True</property>
-		      <signal name="activate" handler="quitApplication" last_modification_time="Fri, 23 Sep 2005 12:22:23 GMT"/>
+		      <signal name="activate" handler="__quitApplication" last_modification_time="Fri, 23 Sep 2005 12:22:23 GMT"/>
 		    </widget>
 		  </child>
 		</widget>
@@ -124,7 +124,7 @@
 		      <property name="visible">True</property>
 		      <property name="label">gtk-cancel</property>
 		      <property name="use_stock">True</property>
-		      <signal name="activate" handler="cancelTests" last_modification_time="Fri, 23 Sep 2005 12:22:23 GMT"/>
+		      <signal name="activate" handler="__cancelTests" last_modification_time="Fri, 23 Sep 2005 12:22:23 GMT"/>
 		    </widget>
 		  </child>
 		</widget>
@@ -182,7 +182,7 @@
 		  <property name="visible_horizontal">True</property>
 		  <property name="visible_vertical">True</property>
 		  <property name="is_important">False</property>
-		  <signal name="clicked" handler="showFileSelection" last_modification_time="Wed, 05 Oct 2005 20:26:18 GMT"/>
+		  <signal name="clicked" handler="__showFileSelection" last_modification_time="Wed, 05 Oct 2005 20:26:18 GMT"/>
 		</widget>
 		<packing>
 		  <property name="expand">False</property>
