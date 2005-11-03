@@ -1,14 +1,19 @@
-# http://module-build.sourceforge.net/META-spec.html
-#XXXXXXX This is a prototype!!!  It will change in the future!!! XXXXX#
-name:         Test-Unit-GTestRunner
-version:      0.02
-version_from: lib/Test/Unit/GTestRunner.pm
-installdirs:  site
-requires:
+--- #YAML:1.0
+name:                Test-Unit-GTestRunner
+version:             0.03
+abstract:            Gtk+ Based Unit Test Runner for Perl
+license:             unknown
+generated_by:        ExtUtils::MakeMaker version 6.30_01
+author:              Guido Flohr <guido@imperia.net>
+distribution_type:   module
+requires:     
     Gtk2:                          0
     Gtk2::GladeXML:                0
     Locale::TextDomain:            1.16
     Test::Unit:                    0
-
-distribution_type: module
-generated_by: ExtUtils::MakeMaker version 6.17
+meta-spec:
+    url: <http://module-build.sourceforge.net/META-spec-new.html>;
+    version: 1.1
+no_index:
+    dir:
+        - Suites

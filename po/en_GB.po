@@ -1,21 +1,21 @@
-# SOME DESCRIPTIVE TITLE.
-# Copyright (C) YEAR Guido Flohr <guido@imperia.net>.
-# This file is distributed under the same license as the PACKAGE package.
-# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+# British English translations for GTestRunner.
+# Copyright (C) 2004-2005 Guido Flohr <guido@imperia.net>
+# This file is distributed under the same license as the 
+# Test-Unit-GtkTestRunner package.
+# Guido Flohr <guido@imperia.net>, 2004-2005
 #
-#, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: PACKAGE VERSION\n"
+"Project-Id-Version: Test-Unit-GTestRunner\n"
 "Report-Msgid-Bugs-To: Guido Flohr <guido@imperia.net>\n"
 "POT-Creation-Date: 2005-11-03 18:30+0100\n"
-"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
-"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
-"Language-Team: LANGUAGE <LL@li.org>\n"
+"PO-Revision-Date: 2005-10-31 22:22+0100\n"
+"Last-Translator: Guido Flohr <guido@imperia.net>\n"
+"Language-Team: British English <guido@imperia.net>\n"
 "MIME-Version: 1.0\n"
-"Content-Type: text/plain; charset=CHARSET\n"
+"Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Plural-Forms: nplurals=INTEGER; plural=EXPRESSION;\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
 #: ../gtestrunner.glade:8
 msgid "GTestRunner"
@@ -134,7 +134,7 @@ msgstr ""
 #. per line.
 #: ../lib/Test/Unit/GTestRunner.pm:705
 msgid "translator-credits"
-msgstr ""
+msgstr "Guido Flohr <guido@imperia.net>"
 
 #: ../lib/Test/Unit/GTestRunner.pm:719 ../lib/Test/Unit/GTestRunner.pm:736
 msgid "Select a test suite or test case to run!"
@@ -222,6 +222,8 @@ msgid ""
 "Internal error: Unrecognized error state \"{state}\".  This should\n"
 "not happen.\n"
 msgstr ""
+"Internal error: Unrecognised error state '{state}'.  This should\n"
+"not happen.\n"
 
 #: ../lib/Test/Unit/GTestRunner/Lister.pm:52
 #: ../lib/Test/Unit/GTestRunner/Worker.pm:47

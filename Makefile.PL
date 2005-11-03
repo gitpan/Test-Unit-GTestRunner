@@ -1,7 +1,7 @@
 #! /usr/local/bin/perl -w
 
 # vim: tabstop=4
-# $Id: Makefile.PL,v 1.7 2005/10/05 18:36:11 guido Exp $
+# $Id: Makefile.PL,v 1.9 2005/11/03 17:35:34 guido Exp $
 
 # Makefile generator for Test-Unit-GTestRunner.
 # Copyright (C) 2004-2005 Guido Flohr <guido@imperia.net>, 
@@ -30,7 +30,7 @@ WriteMakefile (
 	VERSION_FROM	=> 'lib/Test/Unit/GTestRunner.pm',
 	EXE_FILES		=> [ 'bin/gtestrunner' ],
     ($] >= 5.005 ?
-		(ABSTRACT	=> 'Gtk+ Based GUI Test Runner',
+		(ABSTRACT	=> 'Gtk+ Based Unit Test Runner for Perl',
 	 	 AUTHOR		=> 'Guido Flohr <guido@imperia.net>',
 		 ) : (),
 	),
@@ -41,14 +41,29 @@ WriteMakefile (
 	    Test::Unit => 0,
 	},
 	PL_FILES        => {},
+    # This will trigger a warning with ExtUtils::MakeMaker < 6.30_01 :-(
+    # Thanks to Graham Barr for the hint.
+    EXTRA_META => <<EOF,
+no_index:
+    dir:
+        - Suites
+EOF
 );
 
 sub MY::postamble {
 	'
-all :: lib/Test/Unit/GTestRunner.pm
+all :: lib/Test/Unit/GTestRunner.pm Credits ReleaseNotes
 
 lib/Test/Unit/GTestRunner.pm: GTestRunner.pm.in gtestrunner.glade
 		cat GTestRunner.pm.in gtestrunner.glade >$@
+
+# Make search.cpan.org happy but still follow GNU standards:
+# (Thanks to Graham Barr for the hint)
+Credits: THANKS
+	cat THANKS >$@
+
+ReleaseNotes: NEWS
+	cat NEWS >$@
 '
 }
 

@@ -1,7 +1,7 @@
 #! /bin/false
 
 # vim: tabstop=4
-# $Id: Worker.pm,v 1.7 2005/10/26 14:12:43 guido Exp $
+# $Id: Worker.pm,v 1.15 2005/11/02 17:48:23 guido Exp $
 
 # Copyright (C) 2004-2005 Guido Flohr <guido@imperia.net>,
 # all rights reserved.
@@ -26,48 +26,84 @@ use strict;
 
 use constant DEBUG => 0;
 
-BEGIN {
-	# Make output unbuffered.
-	$| = 1;
-}
-
 use base qw (Test::Unit::TestRunner);
 
 use Locale::TextDomain qw (Test-Unit-GTestRunner);
 use Test::Unit::Loader;
 use Storable qw (freeze);
 use MIME::Base64 qw (encode_base64);
+use IO::Handle;
 
-sub new
-{
+sub new {
 	my $class = shift;
 
 	my $self = bless {}, $class;
 
+	# We have to dup stdout to a new filehandle, and redirect it then
+	# to stderr.  Otherwise, misbehaving test cases that print on
+	# stdout, will disturb our communication with the parent.
+	my $io = $self->{__pipe} = IO::Handle->new;
+	unless ($io->fdopen (fileno STDOUT, 'w')) {
+		$self->__sendWarning (__x ("Standard output cannot be "
+								   . "duplicated: {err}.",
+								   err => $!));
+		$self->__sendMessage ("terminated");
+		exit 1;
+	}
+
+	$io->autoflush (1);
+
+	unless (close STDOUT) {
+		$self->__sendWarning (__x ("Standard output cannot be closed: {err}.",
+								   err => $!));
+		$self->__sendMessage ("terminated");
+		exit 1;
+	}
+	
+	unless (open STDOUT, ">&STDERR") {
+		$self->__sendWarning (__x ("Standard output cannot be "
+								   . "redirected to standard error: {err}.",
+								   err => $!));
+		$self->__sendMessage ("terminated");
+		exit 1;
+	}
+	
 	$self->__sendMessage ("pid $$");
 
 	return $self;
 }
 		
-sub waitCommand 
-{
+sub waitCommand {
 	my $self = shift;
 
 	return 1;
 }
 
-sub start 
-{
-	my ($self, $suite_name) = @_;
+sub start {
+	my ($self, @suite_names) = @_;
 
 	my $result = $self->{__my_result} = $self->create_test_result;
 
-	my @test_numbers;
-	if ($suite_name =~ s/::([0-9\s,])$//) {
-		@test_numbers = split /\s*,\s*/, $1;
-	}
+	my @suites;
+	my @selected_tests;
 
-	my $suite = eval { Test::Unit::Loader::load ($suite_name) };
+	foreach my $suite_name (@suite_names) {
+		my @test_numbers;
+		if ($suite_name =~ s/::([0-9\s,])$//) {
+			@test_numbers = split /\s*,\s*/, $1;
+		}
+		push @suites, $suite_name;
+		push @selected_tests, \@test_numbers;
+	}
+	
+	my $suite = eval { 
+		package GTestRunnerSuite;
+		use base qw (Test::Unit::TestSuite);
+		*GTestRunnerSuite::include_tests = sub { @suites };
+
+		package Test::Unit::GTestRunner;
+		Test::Unit::Loader::load ('GTestRunnerSuite'); 
+	};
 	if ($@) {
 		my $reply_queue = $self->{__my_reply_queue};
 		
@@ -76,9 +112,14 @@ sub start
 		exit 1;
 	}
 
-	if (@test_numbers) {
-		# Ouch.  But the Test::Unit API gives us no other chance.
-		$suite->{_Tests} = [@{$suite->{_Tests}}[@test_numbers]];
+	my $count = 0;
+	foreach my $test_numbers (@selected_tests) {
+		if (@{$test_numbers}) {
+			# Ouch.  But the Test::Unit API gives us no other chance.
+			$suite->{_Tests}->[$count]->{_Tests} = 
+				[@{$suite->{_Tests}->[$count]->{_Tests}}[@{$test_numbers}]];
+		}
+		++$count;
 	}
 
 	my $total = $suite->count_test_cases;
@@ -100,8 +141,7 @@ sub start
 }
 
 # These are callbacks from Test::Unit::Result.
-sub start_test
-{
+sub start_test {
     my ($self, $test) = @_;
 
     my $name = $test->name;
@@ -115,8 +155,7 @@ sub start_test
 }
 
 # These are callbacks from Test::Unit::Result.
-sub end_test
-{
+sub end_test {
     my ($self, $test) = @_;
 
     my $name = $test->name;
@@ -126,8 +165,7 @@ sub end_test
     return 1;
 }
 
-sub add_failure
-{
+sub add_failure {
     my ($self, $test, $failure) = @_;
 
     my $name = $test->name;
@@ -147,8 +185,7 @@ sub add_failure
     return 1;
 }
 
-sub add_error
-{
+sub add_error {
     my ($self, $test, $failure) = @_;
 
     my $name = $test->name;
@@ -168,22 +205,23 @@ sub add_error
     return 1;
 }
 
-sub add_pass
-{
+sub add_pass {
     my ($self, $test, $failure) = @_;
+
+    my $name = $test->name;
+	
+	$self->__sendMessage ("success $name");
 	
 	return 1;
 }
 
-sub _print
-{
+sub _print {
     my ($self, @args) = @_;
    
     print @args;
 }
 
-sub __sendMessage
-{
+sub __sendMessage {
 	my ($self, $message) = @_;
 
 	my $length = 1 + length $message;
@@ -192,7 +230,13 @@ sub __sendMessage
 
 	warn ">>> REPLY: $message\n" if DEBUG;
 
-	print "$length $message\n";
+	$self->{__pipe}->print ("$length $message\n");
+}
+
+sub __sendWarning {
+	my ($self, $warning) = @_;
+
+	$self->__sendMessage ("warning $warning");
 }
 
 1;

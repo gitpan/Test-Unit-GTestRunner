@@ -18,8 +18,8 @@ gtestrunner - GTk+ based frontend to Perl unit testing
 
 =head1 SYNOPSIS
 
-    gtestrunner Tests/MySuite.pm
-    gtestrunner Tests::MySuite
+    gtestrunner Tests/MySuite.pm Tests/OtherSuite.pm
+    gtestrunner Tests::MySuite Tests::OtherSuite
     gtestrunner
 
 =head1 DESCRIPTION
@@ -80,6 +80,8 @@ A file selection dialog allows you to load a different test suite.
 Please make sure that the selected test suite compiles in the current
 working directory.
 
+You can select multiple suites here.
+
 =item B<Run>
 
 Runs the entire test suite.
@@ -90,6 +92,18 @@ Read the label as "(Run) Selected".  Run only the currently selected
 part of the test suite.  In the failures view, you can only select
 individual tests.  In the tree view you can select arbitrary parts
 of your test suite.
+
+=item B<Refresh>
+
+Recompiles the entire test suite, so that changes to the structure
+get visible in the tree view of the tests.
+
+=item B<Refresh suites before every run>
+
+If checked, the test suite will be recompiled before it is run.  If you
+don't recompile a suite, and tests have been removed or added, the
+display gets garbled.  You may see error messages associated with
+the wrong test.
 
 =item B<Cancel>
 
@@ -109,31 +123,27 @@ see the description of the corresponding toolbar buttons.
 
 =head1 INTERNALS
 
-The frontend loads the test suite passed as a command-line argument,
-or selected in the file selection dialog.  Nothing is recompiled
-when test suites are (re-)opened!  The initial loading of the test
-suite in the frontend is needed so that the frontend can already
-display the tree structure of the tests.
+The program is a classical "dumb" frontend.  It has no knowledge 
+about unit test suites or their structure.  The test suites passed
+as a command-line argument are fed into a subprocess, that loads
+these suites, and returns its structure to the parent process.
+Loading the test suite blocks, and the frontend does not
+repsonsive during this time.
 
-Every test run spawns a new Perl interpreter as a child process.  The
-child interpreter is invoked with a -I argument (see perl(1)) for
+Unless you have unchecked the option "Refresh suite before every
+run", this subprocess is also started before any test run, so that
+changes in the structure of the test suite are visible in the tree
+view of the frontend.  Depending on the complexity of the suite,
+that may significantly increase the start up time for the test.
+
+Every test run spawns a new Perl interpreter as another child process.  
+The child interpreter is invoked with a -I argument (see perl(1)) for
 each member of the @INC array, so that the child process searches
-the same directories as the parent process.  The child process does
-B<not> know about the test tree structure that the parent process
-has determined.
+the same directories as the parent process.
 
-Therefore, it is safe to modify the modules that are tested, because
-they will be re-compiled on every test run; they are executed in the
-context of a child process.
-
-Adding or removing tests, test cases or test suites is not safe.  Since
-the parent process does not recompile the test suite, it will not
-notice any changes and get completely out of sync with the child process.
-
-All other modifications are "semi-safe".  Choose your own poison;
-in doubt restart the program.
-
-This behavior is suboptimal but difficult to change.
+You should keep this in mind, when you do changes to your test suites.
+It is generally safe to add or remove tests, test cases or test suites
+between runs, but only if you reload the suite before every run.
 
 =head1 AUTHOR
 
@@ -145,6 +155,9 @@ This software is contributed to the Perl community by Imperia
 
 =head1 ENVIRONMENT
 
+If the environment variable "GFC" is set, B<gtestrunner> will use the 
+Gtk+ FileChooser dialog instead of the Gtk+ FileSelection dialog.
+
 The package is internationalized with libintl-perl, hence the 
 environment variables "LANGUAGE", "LANG", "LC_MESSAGES", and
 "LC_ALL" will influence the language in which the GUI and 
@@ -152,8 +165,9 @@ messages are presented.
 
 =head1 SEE ALSO
 
-Test::Unit::GTestRunner(3pm), Test::Unit::TestRunner(3pm), Test::Unit(3pm), 
-Locale::Messages(3pm), perl(1)
+Test::Unit::GTestRunner(3pm), Test::Unit::GTestRunner::Worker(3pm),
+Test::Unit::GTestRunner::Lister(3pm), Test::Unit::TestRunner(3pm), 
+Test::Unit(3pm), Locale::Messages(3pm), perl(1)
 
 =cut
 

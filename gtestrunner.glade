@@ -41,7 +41,7 @@
 		<widget class="GtkMenu" id="menuitem1_menu">
 
 		  <child>
-		    <widget class="GtkImageMenuItem" id="open1">
+		    <widget class="GtkImageMenuItem" id="open_menu_item">
 		      <property name="visible">True</property>
 		      <property name="label">gtk-open</property>
 		      <property name="use_stock">True</property>
@@ -83,9 +83,10 @@
 		      <property name="label" translatable="yes">_Run</property>
 		      <property name="use_underline">True</property>
 		      <signal name="activate" handler="__runTests" last_modification_time="Fri, 23 Sep 2005 12:22:23 GMT"/>
+		      <accelerator key="F9" modifiers="0" signal="activate"/>
 
 		      <child internal-child="image">
-			<widget class="GtkImage" id="image12">
+			<widget class="GtkImage" id="image16">
 			  <property name="visible">True</property>
 			  <property name="stock">gtk-execute</property>
 			  <property name="icon_size">1</property>
@@ -104,9 +105,10 @@
 		      <property name="label" translatable="yes">Run _Selected</property>
 		      <property name="use_underline">True</property>
 		      <signal name="activate" handler="__runSelectedTests" last_modification_time="Tue, 25 Oct 2005 16:30:42 GMT"/>
+		      <accelerator key="F9" modifiers="GDK_SHIFT_MASK" signal="activate"/>
 
 		      <child internal-child="image">
-			<widget class="GtkImage" id="image13">
+			<widget class="GtkImage" id="image17">
 			  <property name="visible">True</property>
 			  <property name="stock">gtk-execute</property>
 			  <property name="icon_size">1</property>
@@ -125,6 +127,40 @@
 		      <property name="label">gtk-cancel</property>
 		      <property name="use_stock">True</property>
 		      <signal name="activate" handler="__cancelTests" last_modification_time="Fri, 23 Sep 2005 12:22:23 GMT"/>
+		      <accelerator key="Escape" modifiers="0" signal="activate"/>
+		    </widget>
+		  </child>
+
+		  <child>
+		    <widget class="GtkImageMenuItem" id="refresh_menu_item">
+		      <property name="visible">True</property>
+		      <property name="label">gtk-refresh</property>
+		      <property name="use_stock">True</property>
+		      <signal name="activate" handler="__refreshSuite" last_modification_time="Tue, 01 Nov 2005 13:07:02 GMT"/>
+		      <accelerator key="r" modifiers="GDK_SHIFT_MASK" signal="activate"/>
+		    </widget>
+		  </child>
+		</widget>
+	      </child>
+	    </widget>
+	  </child>
+
+	  <child>
+	    <widget class="GtkMenuItem" id="settings1">
+	      <property name="visible">True</property>
+	      <property name="label" translatable="yes">_Settings</property>
+	      <property name="use_underline">True</property>
+
+	      <child>
+		<widget class="GtkMenu" id="settings1_menu">
+
+		  <child>
+		    <widget class="GtkCheckMenuItem" id="always_refresh_menuitem">
+		      <property name="visible">True</property>
+		      <property name="label" translatable="yes">_Refresh suites before every run</property>
+		      <property name="use_underline">True</property>
+		      <property name="active">True</property>
+		      <signal name="activate" handler="__refreshSuitesBeforeEveryRun" last_modification_time="Tue, 01 Nov 2005 13:52:20 GMT"/>
 		    </widget>
 		  </child>
 		</widget>
@@ -176,7 +212,7 @@
 	      <property name="show_arrow">False</property>
 
 	      <child>
-		<widget class="GtkToolButton" id="toolbutton1">
+		<widget class="GtkToolButton" id="open_button">
 		  <property name="visible">True</property>
 		  <property name="stock_id">gtk-open</property>
 		  <property name="visible_horizontal">True</property>
@@ -256,7 +292,65 @@
 	      </child>
 
 	      <child>
+		<widget class="GtkToolButton" id="refresh_button">
+		  <property name="visible">True</property>
+		  <property name="sensitive">False</property>
+		  <property name="tooltip" translatable="yes">Refresh the test suite</property>
+		  <property name="stock_id">gtk-refresh</property>
+		  <property name="visible_horizontal">True</property>
+		  <property name="visible_vertical">True</property>
+		  <property name="is_important">False</property>
+		  <signal name="clicked" handler="__refreshSuite" last_modification_time="Mon, 31 Oct 2005 08:55:50 GMT"/>
+		</widget>
+		<packing>
+		  <property name="expand">False</property>
+		  <property name="homogeneous">True</property>
+		</packing>
+	      </child>
+
+	      <child>
 		<widget class="GtkSeparatorToolItem" id="separatortoolitem2">
+		  <property name="visible">True</property>
+		  <property name="draw">True</property>
+		  <property name="visible_horizontal">True</property>
+		  <property name="visible_vertical">True</property>
+		</widget>
+		<packing>
+		  <property name="expand">False</property>
+		  <property name="homogeneous">False</property>
+		</packing>
+	      </child>
+
+	      <child>
+		<widget class="GtkToolItem" id="toolitem1">
+		  <property name="visible">True</property>
+		  <property name="visible_horizontal">True</property>
+		  <property name="visible_vertical">True</property>
+		  <property name="is_important">False</property>
+
+		  <child>
+		    <widget class="GtkCheckButton" id="always_refresh_checkbutton">
+		      <property name="visible">True</property>
+		      <property name="can_focus">True</property>
+		      <property name="label" translatable="yes">Refresh suites before every run</property>
+		      <property name="use_underline">True</property>
+		      <property name="relief">GTK_RELIEF_NORMAL</property>
+		      <property name="focus_on_click">True</property>
+		      <property name="active">True</property>
+		      <property name="inconsistent">False</property>
+		      <property name="draw_indicator">True</property>
+		      <signal name="toggled" handler="__refreshSuitesBeforeEveryRun" last_modification_time="Tue, 01 Nov 2005 13:52:46 GMT"/>
+		    </widget>
+		  </child>
+		</widget>
+		<packing>
+		  <property name="expand">False</property>
+		  <property name="homogeneous">False</property>
+		</packing>
+	      </child>
+
+	      <child>
+		<widget class="GtkSeparatorToolItem" id="separatortoolitem3">
 		  <property name="visible">True</property>
 		  <property name="draw">True</property>
 		  <property name="visible_horizontal">True</property>
@@ -302,7 +396,7 @@
 		<widget class="GtkImage" id="progressimage">
 		  <property name="visible">True</property>
 		  <property name="icon_size">4</property>
-		  <property name="icon_name">gtk-apply</property>
+		  <property name="icon_name">gtk-dialog-question</property>
 		  <property name="xalign">0.5</property>
 		  <property name="yalign">0.5</property>
 		  <property name="xpad">0</property>
@@ -357,7 +451,7 @@
 		      <property name="height_request">140</property>
 		      <property name="visible">True</property>
 		      <property name="can_focus">True</property>
-		      <property name="hscrollbar_policy">GTK_POLICY_ALWAYS</property>
+		      <property name="hscrollbar_policy">GTK_POLICY_AUTOMATIC</property>
 		      <property name="vscrollbar_policy">GTK_POLICY_ALWAYS</property>
 		      <property name="shadow_type">GTK_SHADOW_IN</property>
 		      <property name="window_placement">GTK_CORNER_TOP_LEFT</property>
@@ -367,7 +461,6 @@
 			  <property name="border_width">4</property>
 			  <property name="height_request">120</property>
 			  <property name="visible">True</property>
-			  <property name="has_default">True</property>
 			  <property name="can_focus">True</property>
 			  <property name="headers_visible">True</property>
 			  <property name="rules_hint">True</property>
@@ -412,7 +505,7 @@
 		    <widget class="GtkScrolledWindow" id="scrolledwindow3">
 		      <property name="visible">True</property>
 		      <property name="can_focus">True</property>
-		      <property name="hscrollbar_policy">GTK_POLICY_ALWAYS</property>
+		      <property name="hscrollbar_policy">GTK_POLICY_AUTOMATIC</property>
 		      <property name="vscrollbar_policy">GTK_POLICY_ALWAYS</property>
 		      <property name="shadow_type">GTK_SHADOW_IN</property>
 		      <property name="window_placement">GTK_CORNER_TOP_LEFT</property>

@@ -1,6 +1,359 @@
+2005-11-03 18:37  Guido Flohr <guido@imperia.net>
+
+	* NEWS, ReleaseNotes: updated for version 0.03
+
+2005-11-03 18:35  Guido Flohr <guido@imperia.net>
+
+	* Makefile.PL:
+	  - changed abstract
+	  - excluded directory Suites from indexers (thanks to Graham Barr
+	    for the hint)
+	  - copy GNU standard files to files that search.cpan.org expects
+	    (thanks to Graham Barr for the hint)
+
+2005-11-03 18:34  Guido Flohr <guido@imperia.net>
+
+	* Credits, THANKS: updated
+
+2005-11-03 18:31  Guido Flohr <guido@imperia.net>
+
+	* po/: Test-Unit-GTestRunner.pot, bg.po, de.po, en_GB.po:
+	  re-generated
+
+2005-11-03 18:29  Guido Flohr <guido@imperia.net>
+
+	* gtestrunner.glade: removed non-portable attributes
+
+2005-11-03 18:27  Guido Flohr <guido@imperia.net>
+
+	* MANIFEST: added AUTHORS
+
+2005-11-03 18:26  Guido Flohr <guido@imperia.net>
+
+	* GTestRunner.pm.in, lib/Test/Unit/GTestRunner.pm: changed
+	  description
+
+2005-11-03 16:43  Guido Flohr <guido@imperia.net>
+
+	* GTestRunner.pm.in: bumped version number to 0.03
+
+2005-11-03 14:25  Guido Flohr <guido@imperia.net>
+
+	* TODO: updated
+
+2005-11-03 14:18  Guido Flohr <guido@imperia.net>
+
+	* po/de.po: menu shortcuts
+
+2005-11-03 13:02  Виктор Кожухаров <viktor.kojouharov@imperia.net>
+
+	* GTestRunner.pm.in, lib/Test/Unit/GTestRunner.pm: state-space
+	  diagram for the control system evaluated too soon
+
+2005-11-03 12:49  Виктор Кожухаров <viktor.kojouharov@imperia.net>
+
+	* gtestrunner.glade, lib/Test/Unit/GTestRunner.pm: new accels
+
+2005-11-03 12:36  Guido Flohr <guido@imperia.net>
+
+	* lib/LocaleData/de/LC_MESSAGES/Test-Unit-GTestRunner.mo, po/de.mo:
+	  updated
+
+2005-11-03 12:35  Guido Flohr <guido@imperia.net>
+
+	* po/: Test-Unit-GTestRunner.pot, bg.po, de.po, en_GB.po:
+	  re-generated
+
+2005-11-03 12:35  Guido Flohr <guido@imperia.net>
+
+	* GTestRunner.pm.in, lib/Test/Unit/GTestRunner/Lister.pm: messages
+
+2005-11-03 12:23  Виктор Кожухаров <viktor.kojouharov@imperia.net>
+
+	* TODO, gtestrunner.glade, lib/Test/Unit/GTestRunner.pm, po/bg.po:
+	  updated translation. todo--
+
+2005-11-02 19:18  Guido Flohr <guido@imperia.net>
+
+	* ReleaseNotes, TODO, NEWS: updated
+
+2005-11-02 19:18  Guido Flohr <guido@imperia.net>
+
+	* bin/gtestrunner: updated POD
+
+2005-11-02 18:48  Guido Flohr <guido@imperia.net>
+
+	* lib/Test/Unit/GTestRunner/Worker.pm: fixed typo
+
+2005-11-02 18:46  Guido Flohr <guido@imperia.net>
+
+	* po/Test-Unit-GTestRunner.pot, po/bg.po, po/de.mo, po/en_GB.po,
+	  lib/LocaleData/de/LC_MESSAGES/Test-Unit-GTestRunner.mo:
+	  re-generated
+
+2005-11-02 18:46  Guido Flohr <guido@imperia.net>
+
+	* po/de.po: new translations
+
+2005-11-02 18:41  Guido Flohr <guido@imperia.net>
+
+	* Credits, MANIFEST, Makefile.PL, ReleaseNotes: make
+	  search.cpan.org happy and provide copy of GNU standards files
+
+2005-11-02 15:38  Guido Flohr <guido@imperia.net>
+
+	* TODO: updated
+
+2005-11-02 15:35  Guido Flohr <guido@imperia.net>
+
+	* lib/Test/Unit/GTestRunner/Lister.pm: protection against test
+	  cases that write to stdout
+
+2005-11-02 15:35  Guido Flohr <guido@imperia.net>
+
+	* lib/Test/Unit/GTestRunner/Worker.pm: curly placement
+
+2005-11-02 15:34  Guido Flohr <guido@imperia.net>
+
+	* lib/Test/Unit/GTestRunner/Worker.pm: Protection against tests
+	  that write to stdout
+
+2005-11-02 12:24  Guido Flohr <guido@imperia.net>
+
+	* lib/Test/Unit/GTestRunner/Worker.pm: redirect stdout for test
+	  cases to stderr, so that communication to parent is not disturbed
+
+2005-11-02 11:50  Guido Flohr <guido@imperia.net>
+
+	* GTestRunner.pm.in, lib/Test/Unit/GTestRunner.pm: removed
+	  debugging noise
+
+2005-11-02 11:49  Guido Flohr <guido@imperia.net>
+
+	* TODO: updated
+
+2005-11-02 09:50  Виктор Кожухаров <viktor.kojouharov@imperia.net>
+
+	* TODO:
+
+	  todo?
+
+2005-11-01 22:51  Guido Flohr <guido@imperia.net>
+
+	* ChangeLog: re-generated
+
+2005-11-01 22:48  Guido Flohr <guido@imperia.net>
+
+	* lib/LocaleData/de/LC_MESSAGES/Test-Unit-GTestRunner.mo,
+	  po/POTFILES.in, po/Test-Unit-GTestRunner.pot, po/bg.po, po/de.mo,
+	  po/en_GB.po: re-generated
+
+2005-11-01 22:48  Guido Flohr <guido@imperia.net>
+
+	* po/de.po: new translations
+
+2005-11-01 22:46  Guido Flohr <guido@imperia.net>
+
+	* GTestRunner.pm.in, lib/Test/Unit/GTestRunner.pm: messages
+
+2005-11-01 22:28  Guido Flohr <guido@imperia.net>
+
+	* MANIFEST: added Lister.pm
+
+2005-11-01 22:28  Guido Flohr <guido@imperia.net>
+
+	* lib/Test/Unit/GTestRunner.pm: re-generated
+
+2005-11-01 22:27  Guido Flohr <guido@imperia.net>
+
+	* GTestRunner.pm.in: get test suite tree from subprocess
+
+2005-11-01 17:30  Guido Flohr <guido@imperia.net>
+
+	* lib/Test/Unit/GTestRunner/Lister.pm: clean up
+
+2005-11-01 17:17  Guido Flohr <guido@imperia.net>
+
+	* lib/Test/Unit/GTestRunner/Lister.pm: initial version
+
+2005-11-01 15:10  Guido Flohr <guido@imperia.net>
+
+	* GTestRunner.pm.in, gtestrunner.glade,
+	  lib/Test/Unit/GTestRunner.pm: refresh suites before every run
+
+2005-11-01 15:10  Guido Flohr <guido@imperia.net>
+
+	* TODO: updated
+
+2005-11-01 14:33  Guido Flohr <guido@imperia.net>
+
+	* GTestRunner.pm.in, gtestrunner.glade,
+	  lib/Test/Unit/GTestRunner.pm: added menu item for refresh suite
+
+2005-11-01 13:57  Guido Flohr <guido@imperia.net>
+
+	* AUTHORS, THANKS, USERS: credits
+
+2005-11-01 11:30  Слави Агафонкин <slavi.agafonkin@imperia.net>
+
+	* lib/Test/Unit/GTestRunner/Worker.pm: Proper counting of selected
+	  individual tests.
+
+2005-11-01 10:09  Виктор Кожухаров <viktor.kojouharov@imperia.net>
+
+	* GTestRunner.pm.in, lib/Test/Unit/GTestRunner.pm,
+	  lib/Test/Unit/GTestRunner/Worker.pm: fix some warnings
+
+2005-11-01 01:28  Guido Flohr <guido@imperia.net>
+
+	* AUTHORS, ChangeLog: AUTHORS
+
+2005-10-31 22:26  Guido Flohr <guido@imperia.net>
+
+	* ChangeLog,
+	  lib/LocaleData/bg/LC_MESSAGES/Test-Unit-GTestRunner.mo,
+	  lib/LocaleData/de/LC_MESSAGES/Test-Unit-GTestRunner.mo,
+	  lib/LocaleData/en_GB/LC_MESSAGES/Test-Unit-GTestRunner.mo,
+	  po/Test-Unit-GTestRunner.pot, po/bg.mo, po/bg.po, po/de.mo,
+	  po/de.po, po/en_GB.mo, po/en_GB.po: updated
+
+2005-10-31 22:26  Guido Flohr <guido@imperia.net>
+
+	* lib/Test/Unit/GTestRunner.pm: re-generated
+
+2005-10-31 22:25  Guido Flohr <guido@imperia.net>
+
+	* gtestrunner.glade: changed ids for open items
+
+2005-10-31 22:16  Guido Flohr <guido@imperia.net>
+
+	* GTestRunner.pm.in: simplified changing of GUI states:wq
+
+2005-10-31 21:52  Guido Flohr <guido@imperia.net>
+
+	* TODO: updated
+
+2005-10-31 21:44  Guido Flohr <guido@imperia.net>
+
+	* MANIFEST, README-TRANSLATIONS,
+	  lib/LocaleData/en_GB/LC_MESSAGES/Test-Unit-GTestRunner.mo,
+	  po/PACKAGE, po/en_GB.mo, po/en_GB.po: added translation for
+	  British English
+
+2005-10-31 19:40  Guido Flohr <guido@imperia.net>
+
+	* lib/Test/Unit/GTestRunner.pm: re-generated
+
+2005-10-31 19:39  Guido Flohr <guido@imperia.net>
+
+	* GTestRunner.pm.in: re-evaluate suite names every time a new suite
+	  is loaded
+
+2005-10-31 19:14  Guido Flohr <guido@imperia.net>
+
+	* GTestRunner.pm.in, bin/gtestrunner, lib/Test/Unit/GTestRunner.pm:
+	  updated documentation (multiple suites are supported now)
+
+2005-10-31 17:36  Guido Flohr <guido@imperia.net>
+
+	* NEWS: updated
+
+2005-10-31 17:36  Guido Flohr <guido@imperia.net>
+
+	* GTestRunner.pm.in, TODO, lib/Test/Unit/GTestRunner.pm: suppress
+	  display of virtual top-level suite
+
+2005-10-31 17:25  Guido Flohr <guido@imperia.net>
+
+	* TODO, ChangeLog: updated
+
+2005-10-31 17:24  Guido Flohr <guido@imperia.net>
+
+	* GTestRunner.pm.in, lib/Test/Unit/GTestRunner.pm,
+	  lib/Test/Unit/GTestRunner/Worker.pm: allow loading of multiple
+	  test suites
+
+2005-10-31 16:03  Guido Flohr <guido@imperia.net>
+
+	* NEWS, ChangeLog: updated
+
+2005-10-31 16:01  Guido Flohr <guido@imperia.net>
+
+	* MANIFEST, lib/LocaleData/bg/LC_MESSAGES/Test-Unit-GTestRunner.mo,
+	  lib/LocaleData/de/LC_MESSAGES/Test-Unit-GTestRunner.mo,
+	  po/Test-Unit-GTestRunner.pot, po/bg.mo, po/bg.po, po/de.mo,
+	  po/de.po: activated Bulgarian translation
+
+2005-10-31 15:13  Виктор Кожухаров <viktor.kojouharov@imperia.net>
+
+	* GTestRunner.pm.in, TODO, gtestrunner.glade,
+	  lib/Test/Unit/GTestRunner.pm,
+	  lib/Test/Unit/GTestRunner/Worker.pm: todo--
+
+2005-10-31 11:50  Виктор Кожухаров <viktor.kojouharov@imperia.net>
+
+	* lib/Test/Unit/GTestRunner.pm: refresh button
+
+2005-10-31 11:42  Виктор Кожухаров <viktor.kojouharov@imperia.net>
+
+	* gtestrunner.glade: fix assertion on startup
+
+2005-10-31 11:19  Виктор Кожухаров <viktor.kojouharov@imperia.net>
+
+	* GTestRunner.pm.in, gtestrunner.glade,
+	  lib/Test/Unit/GTestRunner.pm: refresh button
+
+2005-10-28 20:07  Guido Flohr <guido@imperia.net>
+
+	* README-TRANSLATIONS,
+	  lib/LocaleData/bg/LC_MESSAGES/Test-Unit-GTestRunner.mo,
+	  lib/LocaleData/de/LC_MESSAGES/Test-Unit-GTestRunner.mo,
+	  po/Test-Unit-GTestRunner.pot, po/bg.mo, po/bg.po, po/de.mo,
+	  po/de.po, ChangeLog: updated
+
+2005-10-28 17:34  Виктор Кожухаров <viktor.kojouharov@imperia.net>
+
+	* GTestRunner.pm.in, TODO: small warnings fixed
+
+2005-10-28 15:16  Guido Flohr <guido@imperia.net>
+
+	* GTestRunner.pm.in, lib/Test/Unit/GTestRunner.pm: gettextized some
+	  strings
+
+2005-10-28 13:20  Виктор Кожухаров <viktor.kojouharov@imperia.net>
+
+	* GTestRunner.pm.in,
+	  lib/LocaleData/bg/LC_MESSAGES/Test-Unit-GTestRunner.mo,
+	  lib/LocaleData/de/LC_MESSAGES/Test-Unit-GTestRunner.mo,
+	  lib/Test/Unit/GTestRunner.pm, po/PACKAGE,
+	  po/Test-Unit-GTestRunner.pot, po/bg.mo, po/bg.po, po/de.mo,
+	  po/de.po: bg lingua for the masses
+
+2005-10-28 11:21  Виктор Кожухаров <viktor.kojouharov@imperia.net>
+
+	* TODO: todo--
+
+2005-10-28 11:15  Виктор Кожухаров <viktor.kojouharov@imperia.net>
+
+	* GTestRunner.pm.in, gtestrunner.glade,
+	  lib/Test/Unit/GTestRunner.pm: File* remember the last
+	  directories. Houston, we have color (on the statusbar that is).
+	  Giant rats infest Moscow!
+
+	  News at 11!
+
+2005-10-27 16:46  Виктор Кожухаров <viktor.kojouharov@imperia.net>
+
+	* GTestRunner.pm.in, bin/gtestrunner, lib/Test/Unit/GTestRunner.pm:
+	  supports the new FileChooser dialog
+
+2005-10-27 15:55  Виктор Кожухаров <viktor.kojouharov@imperia.net>
+
+	* lib/Test/Unit/GTestRunner.pm: a typo in the callback
+
 2005-10-27 14:20  Guido Flohr <guido@imperia.net>
 
-	* META.yml: updated
+	* META.yml, ChangeLog: updated
 
 2005-10-27 14:16  Guido Flohr <guido@imperia.net>
 
