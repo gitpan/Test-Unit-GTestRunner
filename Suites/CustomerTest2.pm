@@ -16,7 +16,9 @@ sub testRentingOneMovie
 
     $customer->rentMovie(1);
 
+    warn "Output from tests is caught and displayed in the GUI";
     $self->assert($customer->getTotalCharge == 2);
+    print "Even if it is printed to stdout instead of stderr.\n";
 }
 
 sub testRentingTwoMovies
@@ -28,7 +30,8 @@ sub testRentingTwoMovies
     $customer->rentMovie(1);
     $customer->rentMovie(2);
 
-    die "died on purpose";
+    warn "Will die on purpose:\n"; 
+    die "Life is short";
     
     $self->assert_equals(4, $customer->getTotalCharge);
 }
@@ -42,7 +45,7 @@ sub testRentingThreeMovies
     $customer->rentMovie(1);
     $customer->rentMovie(2);
     $customer->rentMovie(3);
-    
+   
     $self->assert_num_equals(7.75, $customer->getTotalCharge);
 }
 

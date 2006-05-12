@@ -1,9 +1,8 @@
 #! /bin/false
 
-# vim: tabstop=4
-# $Id: GTestRunner.pm,v 1.53 2005/11/03 17:26:53 guido Exp $
+# $Id: GTestRunner.pm.in,v 1.70 2006/05/12 12:42:14 guido Exp $
 
-# Copyright (C) 2004-2005 Guido Flohr <guido@imperia.net>,
+# Copyright (C) 2004-2006 Guido Flohr <guido@imperia.net>,
 # all rights reserved.
 
 # This program is free software; you can redistribute it and/or modify
@@ -27,7 +26,134 @@ use strict;
 use constant DEBUG => 0;
 
 use vars qw ($VERSION $PERL @MY_INC);
-$VERSION = '0.03';
+$VERSION = '0.04';
+
+package Test::Unit::GTestRunner::Node;
+
+use strict;
+
+sub new {
+	my ($class, %args) = @_;
+
+	my $self = {
+		__path => $args{path},
+		__name => $args{name},
+		__is_test => $args{is_test},
+		__output => '',
+		__result => '',
+	};
+
+	bless $self, $class;
+}
+
+sub addOutput {
+	my ($self, $text) = @_;
+
+	$self->{__output} .= $text;
+
+	return 1;
+}
+
+sub setOutput {
+	my ($self, $text) = @_;
+
+	$self->{__output} = $text;
+
+	return 1;
+}
+
+sub getOutput {
+	shift->{__output};
+}
+
+sub getStockID {
+	my ($self) = @_;
+
+	my $stock_id = '';
+
+	$stock_id = 'gtk-dialog-question' 
+		if $self->isTest;
+	$stock_id = 'gtk-dialog-warning'
+		if length $self->getOutput;
+	$stock_id = 'gtk-dialog-error'
+		if ($self->isError || $self->isFailure);
+
+	return $stock_id;
+}
+
+sub getName {
+	shift->{__name};
+}
+
+sub getPath {
+	shift->{__path};
+}
+
+sub isError {
+	shift->{__error};
+}
+
+sub setError {
+	my ($self) = @_;
+
+	$self->{__errror} = 1;
+}
+
+sub isTest {
+	shift->{__is_test};
+}
+
+sub isFailure {
+	shift->{__failure};
+}
+
+sub setFailure {
+	my ($self) = @_;
+
+	$self->{__failure} = 1;
+}
+
+sub isSuccess {
+	my $self = shift;
+
+	return (!$self->isError && !$self->isFailure);
+}
+
+sub setSuccess {
+	my ($self) = shift;
+
+	delete $self->{__error};
+	delete $self->{__failure};
+	$self->{__result} = '';
+
+	return;
+}
+
+sub getResult {
+	shift->{__result};
+}
+
+sub setResult {
+	my ($self, $result) = @_;
+
+	$self->{__result} = $result;
+}
+
+sub getFailurePath {
+	shift->{__failure_path};
+}
+
+sub setFailurePath {
+	my ($self, $path) = @_;
+
+	$self->{__failure_path} = $path;
+}
+
+sub unsetFailurePath {
+	delete shift->{__failure_path};
+}
+
+package Test::Unit::GTestRunner;
 
 use English qw (-no_match_vars);
 BEGIN {
@@ -111,11 +237,7 @@ sub new {
 		__kill_signals => [],
 		__last_signal => undef,
 		__failures => [],
-		__tests_by_index => [],
-		__tests_by_path => {},
-		__skips_by_path => {},
 		__new_file_chooser => 0,
-		__load_counter => 0,
 	};
 
 	# Should we make sure that init is called only once?
@@ -153,16 +275,22 @@ sub new {
 
 	$self->{__gladexml} = $gladexml;
 
-	$self->{__main_window} = $gladexml->get_widget ('GTestRunner');
-
 	my $statusbar = $self->{__statusbar} = 
 		$gladexml->get_widget ('statusbar1');
 	my $context_id = $self->{__context_id} =
 		$statusbar->get_context_id (__PACKAGE__);
 	$statusbar->push ($context_id, ' ' . __"Starting GTestRunner.");
 
-	my $error_textview = $gladexml->get_widget ('errortextview');
+	my $error_textview = $self->{__error_textview} =
+		$gladexml->get_widget ('errortextview');
 	my $error_textbuffer = Gtk2::TextBuffer->new;
+	my $tag = $error_textbuffer->create_tag (
+		'error', 
+		foreground => 'red',
+		'foreground-set' => 1,
+		weight => 600,
+	);
+
 	$error_textview->set_buffer ($error_textbuffer);
 	$error_textview->set_wrap_mode ('word');
 	$self->{__error_textbuffer} = $error_textbuffer;
@@ -178,16 +306,29 @@ sub new {
 	my $failure_view = $gladexml->get_widget ('failure_treeview');
 	my $failure_store = Gtk2::ListStore->new ('Glib::String',
 											  'Glib::String', 
+											  'Glib::String', 
 											  'Glib::String');
 	$failure_view->set_model ($failure_store);
+	$failure_view->get_selection->set_mode ('multiple');
 	$self->{__failure_store} = $failure_store;
 	$self->{__failure_view} = $failure_view;
 
-	my $count = 0;
+	my $column = Gtk2::TreeViewColumn->new;
+	$column->set_title (__"Test");
+	$failure_view->append_column ($column);
 
-	for my $header (__"Test", __"Test Case", __"Source") {
+	my $count = 0;
+	my $pixbuf_renderer = Gtk2::CellRendererPixbuf->new;
+	$column->pack_start ($pixbuf_renderer, 0);
+	$column->add_attribute ($pixbuf_renderer, 'stock-id' => $count++);
+
+	my $text_renderer = Gtk2::CellRendererText->new;
+	$column->pack_start ($text_renderer, 1);
+	$column->add_attribute ($text_renderer, text => $count++);
+
+	for my $header (__"Test Case", __"Source") {
 		my $renderer = Gtk2::CellRendererText->new;
-		my $column = 
+		$column = 
 			Gtk2::TreeViewColumn->new_with_attributes ($header, $renderer,
 													   text => $count++);
 		$column->set_resizable (1);
@@ -203,30 +344,32 @@ sub new {
 	my $hierarchy_view = $gladexml->get_widget ('hierarchy_treeview');
 	my $hierarchy_store = Gtk2::TreeStore->new ('Glib::String', 
 												'Glib::String');
+	$hierarchy_view->get_selection->set_mode ('multiple');
 	$hierarchy_view->set_model ($hierarchy_store);
 	$self->{__hierarchy_store} = $hierarchy_store;
 	$self->{__hierarchy_view} = $hierarchy_view;
 
-	$hierarchy_view->signal_connect (cursor_changed => 
-									 sub {
-										 $self->__onHierarchyChange (@_);
-									 });
+	$hierarchy_view->signal_connect (
+		cursor_changed => 
+		sub {
+			$self->__onHierarchyChange (@_);
+		});
 
-	$hierarchy_view->signal_connect (row_activated => 
-								   sub {
-									   $self->__onHierarchyActivated (@_);
-								   });
+	$hierarchy_view->signal_connect (
+		row_activated => 
+		sub {
+			$self->__onHierarchyActivated (@_);
+		});
 
-	my $column = Gtk2::TreeViewColumn->new;
-
+	$column = Gtk2::TreeViewColumn->new;
 	$column->set_title (__"Test");
 	$hierarchy_view->append_column ($column);
 
-	my $pixbuf_renderer = Gtk2::CellRendererPixbuf->new;
+	$pixbuf_renderer = Gtk2::CellRendererPixbuf->new;
 	$column->pack_start ($pixbuf_renderer, 0);
 	$column->add_attribute ($pixbuf_renderer, 'stock-id' => 1);
 
-	my $text_renderer = Gtk2::CellRendererText->new;
+	$text_renderer = Gtk2::CellRendererText->new;
 	$column->pack_start ($text_renderer, 1);
 	$column->add_attribute ($text_renderer, text => 0);
 
@@ -262,10 +405,6 @@ sub new {
 	# Otherwise a zero kill will report on Zombies.
 	$SIG{CHLD} = 'IGNORE' if exists $SIG{CHLD};
 
-	# Save the current symbol table, so that we can force re-compilation
-	# of the test suites.
-	$self->{__saved_symbols} = { map { $_ => 1 } keys %main:: };
-
 	return $self;
 }
 
@@ -291,34 +430,35 @@ sub main {
 }
 
 sub __runTests {
-	my $self = shift;
+	my ($self, $suites) = @_;
 
 	Glib::Source->remove ($self->{__timeout_id}) if $self->{__timeout_id};
 
-	$self->__loadSuite if $self->{__always_refresh};
 	$self->__setGUIState ('running');
 
 	$self->__setErrorTextBuffer ('');
 	$self->{__progress_bar}->set_fraction (0);
 	$self->{__failure_store}->clear;
 	$self->{__failures} = [];
-	$self->{__results} = [];
-	$self->{__errors} = 0;
+	$self->{__error_count} = 0;
+	$self->{__failure_count} = 0;
 	$self->{__counter} = 0;
-	$self->{__progress_image}->set_from_stock ('gtk-dialog-question', 'button');
+	$self->{__num_planned} = @{$self->{__planned}};
+	$self->{__progress_image}->set_from_stock ('gtk-dialog-question',
+											   'button');
 
-	my @suites = @{$self->{__suites}};
-
-	if ($self->{__selected_module}) {
-		@suites = ($self->{__selected_module});
-		$self->{__counter} = $self->{__counter_offset};
-	}
-	foreach my $suite (@suites) {
-		$suite =~ s/\'/\\\'/g;
-		$suite = "'$suite'";
+	foreach my $node (@{$self->{__planned}}) {
+		$node->setOutput ('');
+		$node->setResult ('');
 	}
 
-	my $arg = join ', ', @suites;
+	foreach my $node (@{$self->{__nodes}}) {
+		$node->unsetFailurePath;
+	}
+
+	my @suites = $suites ? @{$suites} : @{$self->{__suites}};
+
+	my $arg = join ', ', map {'"' . $_ . '"'} @suites;
 	my @local_inc = map { '-I' . $_ } @MY_INC;
 	local *CMD;
 	my @cmd = ($PERL, 
@@ -355,42 +495,112 @@ sub __runTests {
 	return 1;
 }
 
-sub __runSelectedTests {
-	my $self = shift;
+sub __runAllTests {
+	my ($self) = @_;
 
-	my $hierarchy_view = $self->{__hierarchy_view};
+	$self->__loadSuite if $self->{__always_refresh};
 
-	my ($path, $column) = $hierarchy_view->get_cursor;
-	
-	my $path_str = $path->to_string;
-	
-	my $record = $self->{__tests_by_path}->{$path_str};
-
-	my $module;
-	my $store = $self->{__hierarchy_store};
-	my $iterator = $store->get_iter ($path);
-	
-	if ($record) {
-		$path_str =~ /:([0-9]+)$/;
-		my $testno = $1;
-		$path->up;
-		
-		($module) = $store->get ($store->get_iter ($path));
-		# The number serves as the identifier for our worker thread 
-		# here.  Remember that Perl module names cannot start with
-		# a number.
-		$module .= "::$testno";
-	} else {
-		($module) = $store->get ($store->get_iter ($path));
+	my @planned;
+	foreach my $node (@{$self->{__nodes}}) {
+		push @planned, $node if $node->isTest;
 	}
 
-	# assert (exists $self->{__skips_by_path});
-	$self->{__counter_offset} = $self->{__skips_by_path}->{$path_str};
-	$self->{__selected_module} = $module;
+	$self->{__planned} = \@planned;
 
-	$self->__runTests;
+	return $self->__runTests;
+}
 
-	return 1;
+sub __runSelectedTests {
+	my $self = shift;
+	my $dirty;
+
+	$self->__loadSuite (\$dirty) if $self->{__always_refresh};	
+	if ($dirty) {
+		my $message = __<<EOF;
+The test suite you want to run has changed.  Please make a new
+selection, and run again.
+EOF
+        my $main_window = $self->{__gladexml}->get_widget ('GTestRunner');
+		my $dialog = Gtk2::MessageDialog->new ($main_window,
+											   'destroy-with-parent',
+											   'error',
+											   'ok',
+											   $message);
+		$dialog->run;
+		$dialog->destroy;
+		return;
+	}
+
+	my $hierarchy_view = $self->{__hierarchy_view};
+	my $failure_view = $self->{__failure_view};
+
+	my $hierarchy_paths = [$hierarchy_view->get_selection->get_selected_rows];
+	my $failure_paths = [$failure_view->get_selection->get_selected_rows];
+
+	if ($failure_paths) {
+		# Convert them into hierarchy_paths.
+		for (my $i = 0; $i < @$failure_paths; $i++) {
+			my $index = $failure_paths->[$i]->to_string;
+			my $node = $self->{__failures}->[0 + $index];
+
+			$failure_paths->[$i] = 
+				Gtk2::TreePath->new_from_string ($node->getPath);	
+		}
+	}
+
+	my $paths = $failure_paths ?
+		@$hierarchy_paths > @$failure_paths 
+			? $hierarchy_paths
+			: $failure_paths
+		: $hierarchy_paths;
+
+	my @modules;
+	my @planned;
+	my %planned;
+	foreach my $path (@$paths) {
+		my $path_str = $path->to_string;
+
+		my $node = $self->{__nodes_by_path}->{$path_str};
+
+		my $module;
+		my $store = $self->{__hierarchy_store};
+		my $iterator = $store->get_iter ($path);
+		
+		if ($node->isTest) {
+			$path_str =~ /:([0-9]+)$/;
+			my $testno = $1;
+			$path->up;
+			
+			($module) = $store->get ($store->get_iter ($path));
+			# The number serves as the identifier for our worker thread 
+			# here.  Remember that Perl module names cannot start with
+			# a number.
+			$module .= "::$testno";
+		} else {
+			($module) = $store->get ($store->get_iter ($path));
+		}
+		push @modules, $module;
+
+		my $path_len = length $path_str;
+		foreach my $node (@{$self->{__nodes}}) {
+			my $node_path = $node->getPath;
+
+			if ($path_str eq substr $node_path, 0, $path_len) {
+				# If a subnode of an already selected node is also
+				# selected, we have to avoid to run tests twice.
+				next if $planned{$node_path};
+
+				# Skip entities which aren't tests.
+				next unless $node->{__is_test};
+				
+				push @planned, $node;
+				$planned{$node_path} = 1;
+			}
+		}
+	}
+
+	$self->{__planned} = \@planned;
+	return $self->__runTests (\@modules);
 }
 
 sub __terminateTests {
@@ -428,14 +638,13 @@ sub __refreshSuitesBeforeEveryRun {
 }
 
 sub __loadSuite {
-	my ($self) = @_;
+	my ($self, $dirty_flag) = @_;
 
-	$self->{__tests_by_index} = [];
-	$self->{__tests_by_path} = {};
-	$self->{__skips_by_path} = {};
-	
 	$self->{__failure_store}->clear;
-	$self->{__hierarchy_store}->clear;
+
+	my $store = Gtk2::TreeStore->new ('Glib::String', 
+									  'Glib::String');
+	my $old_store = $self->{__hierarchy_store};
 
 	$self->__setErrorTextBuffer ('');
 
@@ -474,16 +683,16 @@ sub __loadSuite {
 	my @lines = <CMD>;
 	my $status = shift @lines;
 	unless (defined $status && $status eq "SUCCESS\n") {
-		$self->__setErrorTextBuffer (@lines);
+		$self->__setErrorTextBuffer (join "\n", @lines);
 		$self->__resetGUI;
 		return;
 	}
 	# (void)
 	close CMD;
 
-	my $store = $self->{__hierarchy_store};
 	my @indices;
-
+	my $dirty;
+	my @nodes;
 	foreach my $line (@lines) {
 		chomp $line;
 
@@ -512,26 +721,50 @@ sub __loadSuite {
 
 		my $hpath_str = join ':', @indices;
 		my $hpath = Gtk2::TreePath->new_from_indices (@indices);
-		$self->{__skips_by_path}->{$hpath_str} = @{$self->{__tests_by_index}};
 
-		my $stock_id;
-		if ('-' eq $type) {
-			my $record = {
-				hierarchy_path => $hpath_str,
-				result => '',
-			};
-			push @{$self->{__tests_by_index}}, $record;
-			$self->{__tests_by_path}->{$hpath_str} = $record;
-			$stock_id = 'gtk-dialog-question';
-		}
-	
+		my %args = (path => $hpath_str,
+					name => $name);
+
+		$args{is_test} = 1 if '-' eq $type;
+
+		my $node = Test::Unit::GTestRunner::Node->new (%args);
+		push @nodes, $node;
+
 		$hpath->up;
 		my $parent = $depth ? $store->get_iter ($hpath) : undef;
 		my $iterator = $store->append ($parent);
 		$store->set ($iterator,
-					 0 => $name,
-					 1 => $stock_id);
+					 0 => $node->getName,
+					 1 => $node->getStockID);
+
+		unless ($dirty) {
+			my $new_path = $store->get_path ($iterator);
+			my $new_path_str = $new_path->to_string;
+			my $old_iter = $old_store->get_iter_from_string ($new_path_str);
+
+			unless ($old_iter) {
+				$dirty = 1;
+				next;
+
+			}
+
+			my $old_name = $old_store->get ($old_iter, 0);
+			$dirty = !defined $old_name || $old_name ne $name;
+		}
 	}
+
+	if ($dirty) {
+		$self->{__nodes} = \@nodes;
+		$self->{__hierarchy_view}->set_model ($store);
+		$self->{__hierarchy_store} = $store;
+
+		$self->{__nodes_by_path} = {};
+		foreach my $node (@nodes) {
+			$self->{__nodes_by_path}->{$node->getPath} = $node;
+		}
+	}
+
+	$$dirty_flag = $dirty if $dirty_flag;
 
 	$self->__setGUIState ('loaded');
 
@@ -541,57 +774,61 @@ sub __loadSuite {
 sub __selectTestCase {
 	my ($self, $path_string) = @_;
 
-	my $record = $self->{__tests_by_path}->{$path_string};
+	my $node = $self->{__nodes_by_path}->{$path_string};
+	
+	my $hierarchy_view = $self->{__hierarchy_view};
+	my $failure_view = $self->{__failure_view};
 
-	unless ($self->{__pid}) {
+	my $hierarchy_paths = [$hierarchy_view->get_selection->get_selected_rows];
+	my $failure_paths = [$failure_view->get_selection->get_selected_rows];
+
+	if  ((@$hierarchy_paths || @$failure_paths) && !$self->{__pid}) {
 		$self->__setGUIState ('loaded_selected');
 	}
 
-	unless ($record) {
-		# Must be an inner node of the tree.
+	unless ($node->isTest) {
+		# This is an inner node of the tree.
 		$self->__setErrorTextBuffer ('');
 
-		my $tree_selection = $self->{__failure_view}->get_selection;
+		my $tree_selection = $failure_view->get_selection;
 		$tree_selection->unselect_all;
 
 		return 1;
 	}
 
 	# This is a leaf, and we have a corresponding test case.
-	$self->__setErrorTextBuffer ($record->{result});
+	$self->__setErrorTextBuffer ($node->getResult, $node->getOutput);
 	my $hierarchy_path = Gtk2::TreePath->new_from_string ($path_string);
+
 	if ($hierarchy_path) {
-		my $view = $self->{__hierarchy_view};
-		my ($old_path, undef) = $view->get_cursor;
+		my ($old_path, undef) = $hierarchy_view->get_cursor;
 		
 		if (!defined $old_path || $old_path->compare ($hierarchy_path)) {
-			$view->expand_to_path ($hierarchy_path);
-			$view->scroll_to_cell ($hierarchy_path);
-			$view->get_selection->select_path ($hierarchy_path);
-			$view->set_cursor ($hierarchy_path);
+			$hierarchy_view->expand_to_path ($hierarchy_path);
+			$hierarchy_view->scroll_to_cell ($hierarchy_path);
+			$hierarchy_view->get_selection->select_path ($hierarchy_path);
+			$hierarchy_view->set_cursor ($hierarchy_path);
 		}
 	}
 
-	my $failure_index = $record->{failure_index};
+	my $failure_index = $node->getFailurePath;
 
 	if (defined $failure_index) {
 		my $failure_path = Gtk2::TreePath->new_from_string ($failure_index);
 
 		if ($failure_path) {
-			my $view = $self->{__failure_view};
-			
-			my ($old_path, undef) = $view->get_cursor;
+			my ($old_path, undef) = $failure_view->get_cursor;
 
 			if (!defined $old_path || $old_path->compare ($failure_path)) {
-				$view->expand_to_path ($failure_path);
-				$view->scroll_to_cell ($failure_path);
-				$view->get_selection->select_path ($failure_path);
-				$view->set_cursor ($failure_path);
+				$failure_view->expand_to_path ($failure_path);
+				$failure_view->scroll_to_cell ($failure_path);
+				$failure_view->get_selection->select_path ($failure_path);
+				$failure_view->set_cursor ($failure_path);
 			}
 		}
 	} else {
 		# Unselect.
-		my $tree_selection = $self->{__failure_view}->get_selection;
+		my $tree_selection = $failure_view->get_selection;
 		$tree_selection->unselect_all;
 	}
 
@@ -636,16 +873,14 @@ sub __onFailureChange {
 	my ($path, $focus_column) = $view->get_cursor;
 
 	if ($path) {
-		# Is that really the correct way to retrieve the index???
 		my $index = $path->to_string;
-		my $test_index = $self->{__failures}->[0 + $index];
-		my $record = $self->{__tests_by_index}->[$test_index];
+		my $node = $self->{__failures}->[0 + $index];
 
 		unless ($self->{__pid}) {
 			$self->__setGUIState ('loaded_selected');
 		}
 
-		return $self->__selectTestCase ($record->{hierarchy_path});
+		return $self->__selectTestCase ($node->getPath);
 	}
 
 	$self->__setErrorTextBuffer ('');
@@ -656,10 +891,21 @@ sub __onFailureChange {
 sub __onHierarchyActivated {
 	my ($self, $view, $path) = @_;
 
-	return 1 if $self->{__tests_by_path}->{$path->to_string};
+	my $str_path = $path->to_string;
 
-	$view->row_expanded ($path) ? 
-		$view->collapse_row ($path) : $view->expand_row ($path, 1);
+	if ($self->{__tests_by_path}->{$str_path}) {
+		my $record = $self->{__tests_by_path}->{$str_path};
+		
+		return 1 unless defined $record->{failure_path};
+
+		# Currently selected or not?
+		my $selection = $self->{__hierarchy_view}->get_selection;
+		my $selected = $selection->path_is_selected ($path);
+		$self->__selectAllFailures ($selected);
+	} else {
+		$view->row_expanded ($path) ? 
+			$view->collapse_row ($path) : $view->expand_row ($path, 1);
+	}
 
 	return 1;
 }
@@ -675,7 +921,7 @@ sub __onSwitchPage {
 	my $selection = $view->get_selection;
 
 	my $selected = $selection->count_selected_rows;
-	
+
 	unless ($self->{__pid}) {
 		if ($selected) {
 			$self->__setGUIState ('loaded_selected');
@@ -694,10 +940,16 @@ sub __quitApplication {
 sub __showAboutDialog {
 	my ($self) = @_;
 
-	Gtk2->show_about_dialog ($self->{__main_window},
+	my $viktor = "\x{412}\x{438}\x{43a}\x{442}\x{43e}\x{440} "
+		. "\x{41a}\x{43e}\x{436}\x{443}\x{445}\x{430}\x{440}\x{43e}\x{432} "
+		. "<Viktor.Kojouharov\@imperia.net>";
+
+	my $main_window = $self->{__gladexml}->get_widget ('GTestRunner');
+	Gtk2->show_about_dialog ($main_window,
 							 name => 'GTestRunner',
 							 version => $VERSION,
-							 authors => [ 'Guido Flohr <guido@imperia.net>' ],
+							 authors => [ 'Guido Flohr <guido@imperia.net>',
+										  $viktor],
 							 translator_credits => 
 							 # TRANSLATORS: Replace this string with your
 							 # own names and e-mail addresses, one name
@@ -708,9 +960,6 @@ sub __showAboutDialog {
 
 sub __showFileSelection {
 	my ($self) = @_;
-
-#    $self->__setGUIState ('foobar');
-#    Is this needed? It seems to just break stuff.
 
 	$self->{__new_file_chooser} = 1 if exists $ENV{GFC};
 
@@ -760,38 +1009,45 @@ sub __handleReply {
 
 	my $win = my $ein = '';
 	my $nfound = select $rin, $win, $ein, 0;
-	return $self->__terminateTests (__x ("Select on pipe to child process " .
-										 "failed: {err}.", err => $!))
+	return $self->__terminateTests (__x ("Select on pipe to child process "
+										 . "failed: {err}.", err => $!))
 		if $nfound < 0;
 
 	return unless $nfound;
 
 	my $num_bytes;
 	my $bytes = sysread $self->{__cmd_fh}, $num_bytes, 9;
-	return $self->__terminateTests (__("Unexpected end of file while reading " .
-									  "from child process.")) unless $bytes;
+	return $self->__terminateTests (__("Unexpected end of file while reading "
+									   . "from child process.")) unless $bytes;
 
-	return $self->__terminateTests (__x ("Read from pipe to child process " .
-									"failed: {err}.", err => $!))
+	return $self->__terminateTests (__x ("Read from pipe to child process "
+									. "failed: {err}.", err => $!))
 		if $bytes < 0;
 
 	chop $num_bytes;
 	$num_bytes = hex $num_bytes;
-	return $self->__terminateTests (__("Unexpected end of file while reading " .
-									   "from child process.")) if $bytes <= 0;
-
-	my $reply;
-	$bytes = sysread $self->{__cmd_fh}, $reply, $num_bytes;
-	return $self->__terminateTests (__("Unexpected end of file while reading " .
-								      "from child process.")) unless $bytes;
-	return $self->__terminateTests (__x ("Read from pipe to child process " .
-										 "failed: {err}.", err => $!))
-		if $bytes < 0;
-	$num_bytes = hex $num_bytes;
-	return $self->__terminateTests (__("Protocol error: Invalid number of " .
-									   "bytes in reply from child process."))
+	return $self->__terminateTests (__("Unexpected end of file while reading "
+									   . "from child process.")) 
 		if $bytes <= 0;
-	chop $reply;
+
+	my $reply = '';
+	my $chunk;
+    my $bytes_to_read = $num_bytes;
+
+	while ($bytes_to_read > 0) {
+		$bytes = sysread $self->{__cmd_fh}, $chunk, $bytes_to_read;
+		return $self->__terminateTests (__("Unexpected end of file while "
+										   . "reading from child process.")) 
+			unless $bytes;
+		return $self->__terminateTests (__x ("Read from pipe to child process "
+											 . "failed: {err}.", err => $!))
+			if $bytes < 0;
+
+		$bytes_to_read -= $bytes;
+
+		chop $chunk;
+		$reply .= $chunk;
+	}
 
 	warn "<<< REPLY: $reply\n" if DEBUG;
 
@@ -802,6 +1058,57 @@ sub __handleReply {
 	warn "+++ REPLY: $reply\n" if DEBUG;
 	$self->$method ($args);
 
+	return 1;
+}
+
+sub __handleReplyPrint {
+	my ($self, $message) = @_;
+
+	my $cleartext = decode_base64 $message;
+
+	my $index = $self->{__counter};
+
+	my $node = $self->{__planned}->[$index];	
+
+	$node->addOutput ($cleartext);
+
+	$self->__setErrorTextBuffer ($node->getResult, $node->getOutput);
+
+	# We have been here before.
+	return 1 if defined $node->getFailurePath;
+
+	my $hpath_str = $node->getPath;
+	$self->__selectTestCase ($hpath_str);
+
+	my $hstore = $self->{__hierarchy_store};
+	my $iterator = $hstore->get_iter_from_string ($hpath_str);
+
+	my $test = $hstore->get ($iterator, 0);
+	$hstore->set ($iterator, 1 => 'gtk-dialog-warning');
+
+	my $package = '';
+	my $hpath = Gtk2::TreePath->new_from_string ($hpath_str);
+	if ($hpath->up) {
+		$iterator = $hstore->get_iter ($hpath);
+		$package = $hstore->get ($iterator, 0);
+	}
+
+	my $fstore = $self->{__failure_store};
+
+	$iterator = $fstore->append;
+	$fstore->set ($iterator,
+				  0 => 'gtk-dialog-warning',
+				  1 => $test,
+				  2 => $package);
+
+	my $fpath = $fstore->get_path ($iterator);
+
+	$node->setFailurePath ($fpath->to_string);
+
+	push @{$self->{__failures}}, $node;
+
+	$self->__selectTestCase ($node->getPath);
+	
 	return 1;
 }
 
@@ -844,8 +1151,6 @@ sub __handleReplyTerminated {
     my $self = shift;
 	$self->__resetGUI;
     $self->__setStatusBar (__"Test terminated.");
-	delete $self->{__counter_offset};
-	delete $self->{__selected_module};
 
     return 1;
 }
@@ -856,11 +1161,9 @@ sub __handleReplyStart {
     $self->__setStatusBar (__x"Running: {test}", test => $test);
 
 	my $num_tests = $self->{__counter};
-	$num_tests -= $self->{__counter_offset} if
-		defined $self->{__counter_offset};
 
-	my $num_errors = $self->{__errors};
-	my $num_failures = @{$self->{__failures}} - $num_errors;
+	my $num_errors = $self->{__error_count};
+	my $num_failures = $self->{__failure_count} - $num_errors;
 	my $message = __nx ("one test, ", "{num_tests} tests, ", $num_tests,
 						num_tests => $num_tests);
 	$message .= __nx ("one error, ", "{num_errors} errors, ", $num_errors,
@@ -869,6 +1172,17 @@ sub __handleReplyStart {
 						num_failures => $num_failures);
 
 	$self->{__progress_bar}->set_text ($message);
+
+	my $index = $num_tests;
+	my $node = $self->{__planned}->[$index];
+
+	my $store = $self->{__hierarchy_store};
+
+	my $hpath = Gtk2::TreePath->new_from_string ($node->getPath);
+	my $iterator = $store->get_iter ($hpath);
+
+	my $icon = $store->get ($iterator, 1);
+	$store->set ($iterator, 1 => 'gtk-apply');
 
     return 1;
 }
@@ -879,14 +1193,12 @@ sub __handleReplyEnd {
 	++$self->{__counter};
 
 	my $num_tests = $self->{__counter};
-	$num_tests -= $self->{__counter_offset} if
-		defined $self->{__counter_offset};
-	my $fraction = $self->{__planned} ? 
-		($num_tests / $self->{__planned}) : 1;
+	my $fraction = $self->{__num_planned} ? 
+		($num_tests / $self->{__num_planned}) : 1;
 	$self->{__progress_bar}->set_fraction ($fraction);
 
-	my $num_errors = $self->{__errors};
-	my $num_failures = @{$self->{__failures}} - $num_errors;
+	my $num_errors = $self->{__error_count};
+	my $num_failures = $self->{__failure_count} - $num_errors;
 	my $message = __nx ("one test, ", "{num_tests} tests, ", $num_tests,
 						num_tests => $num_tests);
 	$message .= __nx ("one error, ", "{num_errors} errors, ", $num_errors,
@@ -896,7 +1208,7 @@ sub __handleReplyEnd {
 
 	$self->{__progress_bar}->set_text ($message);
 
-	if ($num_failures == 0) {
+	if ($num_failures == 0 && $num_errors == 0) {
 		$self->{__progress_bar}->modify_bg ('normal', $self->{__green}); 
 		$self->{__progress_image}->set_from_stock ('gtk-apply', 'button');
 	}
@@ -911,19 +1223,26 @@ sub __handleReplySuccess {
 
     $self->__setStatusBar (__x"Success: {test}", test => $test);
 
-	my $record = $self->{__tests_by_index}->[$self->{__counter}];
+	my $index = $self->{__counter};
+
+	my $node = $self->{__planned}->[$index];
 
 	my $store = $self->{__hierarchy_store};
 
-	my $hpath = Gtk2::TreePath->new_from_string ($record->{hierarchy_path});
+	my $hpath = Gtk2::TreePath->new_from_string ($node->getPath);
 	my $iterator = $store->get_iter ($hpath);
-	$store->set ($iterator, 1 => 'gtk-apply');
+
+	my $icon = $store->get ($iterator, 1);
+	$store->set ($iterator, 1 => 'gtk-apply')
+		unless $icon eq 'gtk-dialog-warning';
 
     return 1;
 }
 
 sub __handleReplyFailure {
     my ($self, $reply) = @_;
+
+	++$self->{__failure_count};
 
     my ($test, $obj) = split / +/, $reply, 2;
 
@@ -936,33 +1255,45 @@ sub __handleReplyFailure {
 	my $line = $failure->{line};
 	my $text = $failure->{text};
 
+	my $index = $self->{__counter};
+	my $node = $self->{__planned}->[$index];
+	$node->setFailure;
+
 	my $failure_store = $self->{__failure_store};
-	$failure_store->set ($failure_store->append,
-						0 => $test,
-						1 => $package,
-						2 => "$file:$line");
 
-    $self->__setErrorTextBuffer ($text);
-	push @{$self->{__failures}}, $self->{__counter};
-	my $record = $self->{__tests_by_index}->[$self->{__counter}];
+	my $iterator;
+	if (defined $node->getFailurePath) {
+		my $fpath = Gtk2::TreePath->new_from_string ($node->getFailurePath);
+		$iterator = $failure_store->get_iter ($fpath);
+	} else {
+		$iterator = $failure_store->append;
+		my $fpath = $failure_store->get_path ($iterator);
+		$node->setFailurePath ($fpath->to_string);
+		
+		push @{$self->{__failures}}, $node;
+	}
 
-	$record->{result} = $text;
-	$record->{failure_index} = $#{$self->{__failures}};
+	$failure_store->set ($iterator,
+						 0 => $node->getStockID,
+						 1 => $test,
+						 2 => $package,
+						 3 => "$file:$line");
 
-	$self->{__progress_image}->set_from_stock ('gtk-dialog-error', 'button');
+	$node->setResult ($text);
+
+    $self->__setErrorTextBuffer ($text, $node->getOutput);
+
+	$self->{__progress_image}->set_from_stock ($node->getStockID, 
+											   'button');
 	$self->{__progress_bar}->modify_bg ('normal', $self->{__red});
 
 	my $store = $self->{__hierarchy_store};
 
-	my $hpath = Gtk2::TreePath->new_from_string ($record->{hierarchy_path});
-	my $iterator = $store->get_iter ($hpath);
-	$store->set ($iterator, 1 => 'gtk-dialog-error');
+	my $hpath = Gtk2::TreePath->new_from_string ($node->getPath);
+	$iterator = $store->get_iter ($hpath);
+	$store->set ($iterator, 1 => $node->getStockID);
 
-	my $num_failures = @{$self->{__failures}};
-
-	$record->{failure_path} = $num_failures;
-
-	$self->__selectTestCase ($record->{hierarchy_path});
+	$self->__selectTestCase ($node->getPath);
 	
     return 1;
 }
@@ -970,16 +1301,12 @@ sub __handleReplyFailure {
 sub __handleReplyError {
     my ($self, $reply) = @_;
 
-	++$self->{__errors};
+	++$self->{__error_count};
+
+	my $node = $self->{__planned}->[$self->{__counter}];
+	$node->setError;
+
 	$self->__handleReplyFailure ($reply);
-}
-
-sub __handleReplyPlanned {
-	my ($self, $planned) = @_;
-
-	$self->{__planned} = $planned;
-
-	return 1;
 }
 
 # FIXME! What should happen here?
@@ -992,9 +1319,18 @@ sub __handleReplyWarning {
 }
 
 sub __setErrorTextBuffer {
-	my ($self, $text) = @_;
+	my ($self, $text, $output) = @_;
 
-	$self->{__error_textbuffer}->set_text ($text);
+	my $buffer = $self->{__error_textbuffer};
+	
+	$text = '' unless defined $text;
+
+	$buffer->set_text ($text);
+
+	my ($start, $end) = $buffer->get_bounds;
+	
+	$buffer->apply_tag_by_name ('error', $start, $end);
+	$buffer->insert ($start, $output) if defined $output;
 
 	return 1;
 }
@@ -1060,8 +1396,8 @@ Internal error: Unrecognized error state "{state}".  This should
 not happen.
 EOF
 
-		my $dialog = Gtk2::MessageDialog->new (
-											   $self->{__main_window},
+        my $main_window = $self->{__gladexml}->get_widget ('GTestRunner');
+		my $dialog = Gtk2::MessageDialog->new ($main_window,
 											   'destroy-with-parent',
 											   'error',
 											   'ok',
@@ -1080,6 +1416,37 @@ EOF
 	}
 
 	return 1;
+}
+
+sub __selectAllFailures {
+	my ($self) = @_;
+
+	my $hstore = $self->{__hierarchy_store};
+	my $hview = $self->{__hierarchy_view};
+	my $hselection = $hview->get_selection;
+	$hselection->unselect_all;
+
+	my $fstore = $self->{__failure_store};
+	my $fview = $self->{__failure_view};
+	my $fselection = $fview->get_selection;
+	$fselection->unselect_all;
+	
+	my $records = $self->{__tests_by_path};
+	foreach my $str_hpath (keys %$records) {
+		my $str_fpath = $records->{$str_hpath}->{failure_path};
+		next unless defined $str_fpath;
+
+		my $hpath = Gtk2::TreePath->new_from_string ($str_hpath);
+		$hselection->select_path ($hpath);
+
+		my $fpath = Gtk2::TreePath->new_from_string ($str_fpath);
+		$fselection->select_path ($fpath);
+	}
+
+	if (!$self->{__pid}) {
+		my $new_state = 'loaded';
+		$new_state .= '_selected' if $hselection->count_selected_rows;
+	}
 }
 
 1;
@@ -1186,7 +1553,7 @@ for the method start().
 
 =head1 AUTHOR
 
-Copyright (C) 2004-2005, Guido Flohr E<lt>guido@imperia.netE<gt>, all
+Copyright (C) 2004-2006, Guido Flohr E<lt>guido@imperia.netE<gt>, all
 rights reserved.  See the source code for details.
 
 This software is contributed to the Perl community by Imperia 
@@ -1304,7 +1671,7 @@ __DATA__
 		      <property name="visible">True</property>
 		      <property name="label" translatable="yes">_Run</property>
 		      <property name="use_underline">True</property>
-		      <signal name="activate" handler="__runTests" last_modification_time="Fri, 23 Sep 2005 12:22:23 GMT"/>
+		      <signal name="activate" handler="__runAllTests" last_modification_time="Fri, 23 Sep 2005 12:22:23 GMT"/>
 		      <accelerator key="F9" modifiers="0" signal="activate"/>
 
 		      <child internal-child="image">
@@ -1471,7 +1838,7 @@ __DATA__
 		  <property name="visible_horizontal">True</property>
 		  <property name="visible_vertical">True</property>
 		  <property name="is_important">False</property>
-		  <signal name="clicked" handler="__runTests" last_modification_time="Fri, 23 Sep 2005 12:22:49 GMT"/>
+		  <signal name="clicked" handler="__runAllTests" last_modification_time="Fri, 23 Sep 2005 12:22:49 GMT"/>
 		</widget>
 		<packing>
 		  <property name="expand">False</property>

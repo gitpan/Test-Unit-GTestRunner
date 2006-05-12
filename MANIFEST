@@ -1,5 +1,6 @@
 AUTHORS				The usual suspects
 bin/gtestrunner			Wrapper script
+Build.PL			Build builder script
 ChangeLog			ChangeLog
 Credits				THANKS but for search.cpan.org
 COPYING				Licensing
@@ -30,6 +31,7 @@ README				Package Overview
 README-NLS			About NLS
 README-TRANSLATIONS		Translation status
 ReleaseNotes			NEWS but for search.cpan.org
+SIGNATURE			Signature for the module
 Suites/Customer.pm              Dummy module being tested
 Suites/CustomerTest1.pm         Dummy test case
 Suites/CustomerTest2.pm         Dummy test case
@@ -39,5 +41,6 @@ Suites/TS_SubSuite2.pm          Dummy test suite
 Suites/TS_SubSuite3.pm          Dummy test suite
 Suites/TS_TopLevel.pm           Dummy test suite that runs the test
 t/00load.t			Very basic test
+t/01signature.t			Signature testing
 THANKS                          Bribe
 TODO				Things left to be done

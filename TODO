@@ -1,17 +1,11 @@
-o Emulate missing method of Test::Unit::TestSuite that runs alls scripts
-  in a test directory.
-
-o Logo!
+o Integrate Viktor's Logo!
 
 o Automatically generate po/en.po and po/en_GB.po.
 
-o Replace "Error::subs" with something meaningful for died test cases.
+o Check whether Build.PL actually works.
 
-o Check consistency of shortcuts.
+o When selecting multiple tests, the other notebook page is not updated
+  accordingly.
 
-o If the user runs only the selected part of the suites, the process should
-  stop with an error, if the frontend has detected a change in the internal
-  structure.  Otherwise the wrong test cases will be run.
+o Changed test suites currently lead to errors.
 
-o Remember previous test results within a session, so that icons can be
-  set to indicate success or failure.

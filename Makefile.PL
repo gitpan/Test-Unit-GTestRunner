@@ -1,10 +1,10 @@
 #! /usr/local/bin/perl -w
 
 # vim: tabstop=4
-# $Id: Makefile.PL,v 1.9 2005/11/03 17:35:34 guido Exp $
+# $Id: Makefile.PL,v 1.11 2006/05/12 12:42:14 guido Exp $
 
 # Makefile generator for Test-Unit-GTestRunner.
-# Copyright (C) 2004-2005 Guido Flohr <guido@imperia.net>, 
+# Copyright (C) 2004-2006 Guido Flohr <guido@imperia.net>, 
 # all rights reserved.
 
 # This program is free software; you can redistribute it and/or modify it
@@ -20,7 +20,7 @@
 # You should have received a copy of the GNU Library General Public
 # License along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
-# USA.use ExtUtils::MakeMaker;
+# USA.
 
 use 5.006;
 use ExtUtils::MakeMaker;
@@ -41,6 +41,9 @@ WriteMakefile (
 	    Test::Unit => 0,
 	},
 	PL_FILES        => {},
+	LICENSE			=> 'gpl',
+    (MM->can ('signature_target') ? (SIGN => 1) : ()),
+
     # This will trigger a warning with ExtUtils::MakeMaker < 6.30_01 :-(
     # Thanks to Graham Barr for the hint.
     EXTRA_META => <<EOF,

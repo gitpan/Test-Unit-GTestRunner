@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/perl 
 
 use strict;
 
@@ -147,7 +147,7 @@ between runs, but only if you reload the suite before every run.
 
 =head1 AUTHOR
 
-Copyright (C) 2004-2005, Guido Flohr E<lt>guido@imperia.netE<gt>, all
+Copyright (C) 2004-2006, Guido Flohr E<lt>guido@imperia.netE<gt>, all
 rights reserved.  See the source code for details.
 
 This software is contributed to the Perl community by Imperia 

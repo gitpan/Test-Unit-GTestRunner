@@ -19,14 +19,6 @@ sub testRentingOneMovie
     $customer->rentMovie(1);
     
     $self->assert($customer->getTotalCharge == 4);
-
-print STDERR "Sleeping...\n";
-
-    sleep SLEEP_TIME;
-
-print STDERR "Done\n";
-
-sleep 10;
 }
 
 sub testRentingTwoMovies

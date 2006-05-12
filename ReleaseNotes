@@ -1,3 +1,9 @@
+Version 0.04 -12 May 2006
+
+* Experimental Build.PL as an alternative to make
+* Multiple selections allowed 
+* Test output (stdout and stderr) is now displayed in the error window
+
 Version 0.03 - 03 Nov 2005
 
 * Background color of progress bar now changes to red/green

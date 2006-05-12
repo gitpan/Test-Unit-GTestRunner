@@ -1,9 +1,9 @@
 #! /bin/false
 
 # vim: tabstop=4
-# $Id: Lister.pm,v 1.4 2005/11/03 11:35:18 guido Exp $
+# $Id: Lister.pm,v 1.5 2006/05/12 12:42:14 guido Exp $
 
-# Copyright (C) 2004-2005 Guido Flohr <guido@imperia.net>,
+# Copyright (C) 2004-2006 Guido Flohr <guido@imperia.net>,
 # all rights reserved.
 
 # This program is free software; you can redistribute it and/or modify
@@ -135,7 +135,7 @@ executed in separate process.
 
 =head1 AUTHOR
 
-Copyright (C) 2004-2005, Guido Flohr E<lt>guido@imperia.netE<gt>, all
+Copyright (C) 2004-2006, Guido Flohr E<lt>guido@imperia.netE<gt>, all
 rights reserved.  See the source code for details.
 
 This software is contributed to the Perl community by Imperia 

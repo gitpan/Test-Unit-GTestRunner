@@ -1,8 +1,8 @@
 # British English translations for GTestRunner.
-# Copyright (C) 2004-2005 Guido Flohr <guido@imperia.net>
+# Copyright (C) 2004-2006 Guido Flohr <guido@imperia.net>
 # This file is distributed under the same license as the 
 # Test-Unit-GtkTestRunner package.
-# Guido Flohr <guido@imperia.net>, 2004-2005
+# Guido Flohr <guido@imperia.net>, 2004-2006
 #
 msgid ""
 msgstr ""

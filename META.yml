@@ -1,8 +1,8 @@
 --- #YAML:1.0
 name:                Test-Unit-GTestRunner
-version:             0.03
+version:             0.04
 abstract:            Gtk+ Based Unit Test Runner for Perl
-license:             unknown
+license:             gpl
 generated_by:        ExtUtils::MakeMaker version 6.30_01
 author:              Guido Flohr <guido@imperia.net>
 distribution_type:   module
